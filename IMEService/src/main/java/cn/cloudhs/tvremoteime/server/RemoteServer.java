@@ -86,7 +86,7 @@ public class RemoteServer extends NanoWSD {
             try {
                 Enumeration<NetworkInterface> enumerationNi = NetworkInterface.getNetworkInterfaces();
                 while (enumerationNi.hasMoreElements()) {
-                    NetworkInterface networkInterface = enumerationNi.next();
+                    NetworkInterface networkInterface = enumerationNi.nextElement();
                     String interfaceName = networkInterface.getDisplayName();
                     if ("eth0".equals(interfaceName) || "wlan0".equals(interfaceName)) {
                         Enumeration<InetAddress> enumIpAddr = networkInterface.getInetAddresses();

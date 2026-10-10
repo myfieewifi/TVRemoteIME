@@ -22,12 +22,21 @@ public class AppConfig {
     private static final String KEY_DISMISSED_UPDATE = "dismissed_update_code";
     private static final String KEY_DLNA_NAME_SUFFIX = "dlna_name_suffix";
     private static final String KEY_PLAYER_UA = "player_user_agent";
+    private static final String KEY_PLAYER_ENGINE = "player_engine";
 
     // 默认值
     public static final int DEFAULT_PORT = 9978;
     public static final float DEFAULT_TOUCH_SENSITIVITY = 1.2f;
     public static final String DEFAULT_PLAYER_UA =
             "TVRemoteIME/" + AppPackagesHelper.getCurrentPackageVersion(null);
+    /**
+     * 播放器内核：
+     *   exo = ExoPlayer（默认，硬件解码，CPU/内存占用低，全架构可用）
+     *   ijk = IJKPlayer（FFmpeg 软件解码，老设备/冷门格式兜底，仅 armeabi-v7a 包内含其 so）
+     */
+    public static final String ENGINE_EXO = "exo";
+    public static final String ENGINE_IJK = "ijk";
+    public static final String DEFAULT_PLAYER_ENGINE = ENGINE_EXO;
 
     private final SharedPreferences sp;
 
@@ -113,6 +122,20 @@ public class AppConfig {
         }
     }
 
+    /** 默认播放器内核：exo / ijk */
+    public String getPlayerEngine() {
+        String engine = sp.getString(KEY_PLAYER_ENGINE, DEFAULT_PLAYER_ENGINE);
+        if (engine == null) return DEFAULT_PLAYER_ENGINE;
+        engine = engine.trim().toLowerCase();
+        return ENGINE_IJK.equals(engine) ? ENGINE_IJK : ENGINE_EXO;
+    }
+
+    public void setPlayerEngine(String engine) {
+        String value = (engine == null) ? "" : engine.trim().toLowerCase();
+        if (!ENGINE_IJK.equals(value)) value = ENGINE_EXO;
+        sp.edit().putString(KEY_PLAYER_ENGINE, value).apply();
+    }
+
     /** 序列化为 JSON，供 Web 前端 /api/config 读取 */
     public JSONObject toJson() {
         JSONObject json = new JSONObject();
@@ -124,8 +147,8 @@ public class AppConfig {
             json.put("dlnaNameSuffix", getDLNANameSuffix());
             json.put("playerUserAgent", getPlayerUserAgent());
             json.put("defaultPlayerUserAgent", DEFAULT_PLAYER_UA);
-            json.put("versionCode", AppPackagesHelper.getCurrentPackageVersionCode(null));
-            json.put("versionName", AppPackagesHelper.getCurrentPackageVersion(null));
+            json.put("playerEngine", getPlayerEngine());
+            json.put("defaultPlayerEngine", DEFAULT_PLAYER_ENGINE);
         } catch (JSONException ignored) {}
         return json;
     }
@@ -159,6 +182,12 @@ public class AppConfig {
             } else {
                 editor.putString(KEY_PLAYER_UA, ua.trim());
             }
+        }
+        if (json.has("playerEngine")) {
+            String engine = json.getString("playerEngine");
+            engine = (engine == null) ? "" : engine.trim().toLowerCase();
+            if (!ENGINE_IJK.equals(engine)) engine = ENGINE_EXO;
+            editor.putString(KEY_PLAYER_ENGINE, engine);
         }
         editor.apply();
     }

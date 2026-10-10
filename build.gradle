@@ -14,6 +14,19 @@ allprojects {
         mavenCentral()
         maven { url 'https://jitpack.io' }
     }
+
+    // 统一 Kotlin 标准库版本。androidx / material 等依赖会分别引入
+    // kotlin-stdlib 与 kotlin-stdlib-jdk7/jdk8 的不同版本，打包时会出现
+    // Duplicate class（重复类）而中断构建；自 Kotlin 1.8 起 jdk7/jdk8
+    // 已合并进 kotlin-stdlib，这里统一对齐到同一版本。
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin'
+                    && details.requested.name.startsWith('kotlin-stdlib')) {
+                details.useVersion '1.8.0'
+            }
+        }
+    }
 }
 
 task clean(type: Delete) {

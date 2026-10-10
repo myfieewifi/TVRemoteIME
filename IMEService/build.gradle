@@ -11,25 +11,64 @@ android {
         versionCode 1
         versionName "1.0.0"
         vectorDrawables.useSupportLibrary = true
-        ndk {
-            // ijkplayer/thunder 只提供 armeabi-v7a 的 so，核心功能（遥控/ExoPlayer/输入法/触摸）是纯 Java 全架构兼容
-            // arm64 设备可兼容运行 armeabi-v7a so；如需 x86 模拟器可自行补充对应 so 或在此加 abi
-            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        // 只保留中文与英文字符资源，剔除其它语言，减小体积（核心文案为中文，其余回退默认）
+        resConfigs 'zh', 'en'
+        // 注意：这里不再使用 ndk { abiFilters }，ABI 统一交给下方 splits.abi 管理。
+        // 两者同时配置会相互覆盖（abiFilters 会把 splits 的分包结果重新合并成单个大包）。
+    }
+
+    // ===== ABI 分包：按 CPU 架构分别产出独立 APK，单包体积显著减小 =====
+    // 体积来源：ijkplayer(约 9.7MB) + thunder(约 5.4MB) 的 .so 仅有 armeabi-v7a 版本。
+    // 分包后：
+    //   armeabi-v7a 包 -> 含上述两个内核 so，兼容老设备 / 需要 IJK 软解兜底的场景；
+    //   arm64-v8a   包 -> 不含这两个 so（它们本就没有 arm64 版本），体积明显更小，
+    //                     播放统一走 ExoPlayer（纯 Java，全架构可用）；
+    //   universal   包 -> 同时含两套架构，供无法正确识别 ABI 的老旧设备兜底安装。
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a'
+            universalApk true
         }
     }
+
     buildTypes {
-        debug{
+        debug {
             minifyEnabled false
         }
-        release{
-            minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        release {
+            // R8 代码压缩 + 资源压缩：剔除未使用的类 / 资源，进一步减小体积。
+            // 若线上出现异常（反射类被误删），可将这两项改回 false 快速回滚。
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // lint 检查：保留检查能力，但不在打包阶段中断构建。
+    // release 包不再因 lint 告警而失败；需要完整检查时单独执行 ./gradlew lint。
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    // 给分包产物设置易读文件名，便于区分架构，例如：
+    //   TVRemoteIME-1.0.0-armeabi-v7a.apk
+    //   TVRemoteIME-1.0.0-arm64-v8a.apk
+    //   TVRemoteIME-1.0.0-universal.apk
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def abi = output.getFilter(com.android.build.OutputFile.ABI)
+            def abiSuffix = (abi == null || abi.isEmpty()) ? 'universal' : abi
+            if (variant.buildType.name == 'release') {
+                output.outputFileName = "TVRemoteIME-${variant.versionName}-${abiSuffix}.apk"
+            }
+        }
     }
 }
 

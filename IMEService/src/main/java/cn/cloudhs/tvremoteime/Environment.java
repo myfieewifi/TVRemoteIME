@@ -19,6 +19,12 @@ public class Environment {
 
     public static int adbServerPort = 5555;
 
+    /**
+     * 全局 Application Context。供没有 Context 入参的静态工具方法（如读取版本号）兜底使用，
+     * 由 IMEService / MainActivity 启动时写入，避免出现空指针。
+     */
+    public static Context context = null;
+
     private static Handler toastHandler = null;
 
     public static void debug(String tag, String msg){

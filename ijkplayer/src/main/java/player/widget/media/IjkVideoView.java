@@ -51,7 +51,6 @@ import java.util.Map;
 
 import player.services.MediaPlayerService;
 import player.settings.Settings;
-import tv.danmaku.ijk.media.exo.IjkExoMediaPlayer;
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
@@ -1062,11 +1061,10 @@ public class IjkVideoView extends FrameLayout implements MediaController.MediaPl
         IMediaPlayer mediaPlayer = null;
 
         switch (playerType) {
-            case Settings.PV_PLAYER__IjkExoMediaPlayer: {
-                IjkExoMediaPlayer IjkExoMediaPlayer = new IjkExoMediaPlayer(mAppContext);
-                mediaPlayer = IjkExoMediaPlayer;
-            }
-            break;
+            // 说明：原 PV_PLAYER__IjkExoMediaPlayer 分支依赖旧版 ExoPlayer 封装类
+            // tv.danmaku.ijk.media.exo.IjkExoMediaPlayer，该类基于已废弃的 ExoPlayer2 旧 API，
+            // 与本项目新引入的 ExoPlayer 2.19 内核不兼容，故不再支持；该类型会落到 default 分支，
+            // 使用内置的 ijkplayer 内核播放。
             case Settings.PV_PLAYER__AndroidMediaPlayer: {
                 AndroidMediaPlayer androidMediaPlayer = new AndroidMediaPlayer();
                 mediaPlayer = androidMediaPlayer;

@@ -8,6 +8,7 @@ import android.util.Log;
 import java.net.URLDecoder;
 import java.util.Map;
 
+import cn.cloudhs.tvremoteime.AppConfig;
 import cn.cloudhs.tvremoteime.AppPackagesHelper;
 import cn.cloudhs.tvremoteime.IMEService;
 import cn.cloudhs.tvremoteime.VideoPlayHelper;
@@ -60,6 +61,12 @@ public class PlayRequestProcesser implements RequestProcesser {
                 boolean useIJK    = "true".equalsIgnoreCase(params.get("useIJK")) || "true".equalsIgnoreCase(params.get("useXl"));
                 boolean useExo    = "true".equalsIgnoreCase(params.get("useExo"));
 
+                AppConfig config = AppConfig.getInstance(context);
+                // 请求未显式指定内核时，使用持久化的默认内核（Web 端「投屏」页可切换）
+                if (!useSystem && !useIJK && !useExo) {
+                    useIJK = AppConfig.ENGINE_IJK.equals(config.getPlayerEngine());
+                }
+
                 if (useSystem) {
                     // 调系统播放器/旧逻辑
                     VideoPlayHelper.playUrl(this.context, url, 0, true);
@@ -73,6 +80,9 @@ public class PlayRequestProcesser implements RequestProcesser {
                         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         i.putExtra("videoUrl", url);
                         i.putExtra("videoTitle", title);
+                        // 播放器运行在独立进程（:player），SharedPreferences 跨进程不保证实时同步，
+                        // 故在主进程读取 UA 后通过 Intent 显式传递，避免播放器读到过期配置
+                        i.putExtra("userAgent", config.getPlayerUserAgent());
                         context.startActivity(i);
                     } catch (Throwable t) {
                         Log.e(TAG, "启动 ExoPlayer 失败，退回旧播放器", t);

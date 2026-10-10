@@ -2,10 +2,6 @@ package cn.cloudhs.tvremoteime.http;
 
 import android.util.Log;
 
-import cn.cloudhs.tvremoteime.Environment;
-
-import org.apache.http.util.CharArrayBuffer;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,7 +33,8 @@ public class HTTPGet {
                     if (length < 0) {
                         length = 4096;
                     }
-                    CharArrayBuffer buffer = new CharArrayBuffer(length);
+                    // 使用 JDK 自带的 StringBuilder 累积响应内容，避免额外引入 Apache HttpClient 依赖
+                    StringBuilder buffer = new StringBuilder(length);
                     char[] tmp = new char[1024];
 
                     int l;

@@ -9,14 +9,16 @@
 - 👆 **触摸板**：手机滑动模拟触摸光标移动，支持单击 / 双击 / 长按 / 滚轮
 - ⌨️ **跨屏输入**：手机/电脑键盘直接输入文字到电视，支持 PC 键盘方向键快捷操作
 - 📺 **投屏播放**：基于 ExoPlayer 2.19.1 的新内核，支持 MP4 / MKV / HLS(.m3u8) / DASH / RTSP / RTMP 等主流格式，缓冲策略和硬解码兼容性全面升级
+- 🔀 **双内核可切换**：Web 端一键在 ExoPlayer（硬解、省资源）与 IJKPlayer（FFmpeg 软解、兼容兜底）之间切换，应对老设备与冷门格式
+- 📦 **ABI 分包**：按 CPU 架构分别产出独立 APK，单包体积显著减小；arm64 包不再携带仅 32 位的老内核 so
 - 🔔 **在线更新**：通过 GitHub Release 发布，每个新版本只提示一次，支持强制更新
-- 💾 **配置持久化**：服务端口、触摸灵敏度、自动更新、DLNA 名称等配置使用 SharedPreferences 持久化，APP 端与 Web 前端均可读写
-- 🧠 **常驻内存优化**：输入法作为后台常驻服务，投屏 / DLNA / 更新检测等重型模块按需加载，不占用冷启动内存
+- 💾 **配置持久化**：服务端口、触摸灵敏度、播放器内核 / User-Agent、自动更新、DLNA 名称等配置使用 SharedPreferences 持久化，APP 端与 Web 前端均可读写
+- 🧠 **常驻内存优化**：输入法作为后台常驻服务，投屏 / DLNA / 更新检测等重型模块按需加载；播放器独立进程运行，退出即由系统回收
 
 ## 🚀 使用方法
 
 1. 使用 Android Studio 打开本项目编译，或在 GitHub Actions 自动构建出 APK；
-2. 在电视/盒子上安装 APK；
+2. 按电视 / 盒子的 CPU 架构选择对应安装包（不确定就选 `universal` 通用包），安装到设备；
 3. 进入系统设置 → 输入法，启用「云视远程输入法」并将其**设为默认**；
 4. 打开 App，页面会显示本机的 HTTP 服务地址，例如 `http://192.168.1.100:9978`；
 5. 将手机 / 电脑 连接到同一局域网，浏览器访问该地址即可开始遥控。
@@ -31,7 +33,13 @@
 ./gradlew assembleRelease
 ```
 
-输出 APK 位于 `IMEService/build/outputs/apk/release/`。
+由于启用了 ABI 分包，会输出三个 APK，均位于 `IMEService/build/outputs/apk/release/`：
+
+| 文件 | 说明 |
+|---|---|
+| `TVRemoteIME-1.0.0-armeabi-v7a.apk` | 32 位 ARM，含 IJK / 迅雷内核 so，兼容老盒子 |
+| `TVRemoteIME-1.0.0-arm64-v8a.apk` | 64 位 ARM，体积最小，播放走 ExoPlayer |
+| `TVRemoteIME-1.0.0-universal.apk` | 双架构通用包，不确定架构时选它 |
 
 ## 🤖 GitHub Actions 自动构建
 
@@ -44,9 +52,9 @@ git push origin v1.0.0
 
 工作流会：
 
-1. 使用 JDK 17 + Gradle 7.5 在 Ubuntu 环境下构建 Release APK；
-2. 打包 `armeabi-v7a` + `arm64-v8a` 双架构（覆盖市面绝大多数电视/盒子）；
-3. 自动创建 GitHub Release 并上传 `TVRemoteIME-<tag>.apk`。
+1. 使用 JDK 17 + Gradle 7.5 在 Ubuntu 24.04 环境下构建 Release APK；
+2. 按 ABI 分包产出 `armeabi-v7a` / `arm64-v8a` / `universal` 三个安装包；
+3. 自动创建 GitHub Release 并上传以上 APK，命名为 `TVRemoteIME-<tag>-<abi>.apk`。
 
 ## 🌐 HTTP 接口
 
@@ -69,11 +77,43 @@ git push origin v1.0.0
 TVRemoteIME/
 ├── IMEService/        # 主模块：输入法服务 + HTTP 服务器 + Web 前端 + 播放器
 ├── DroidDLNA/         # DLNA 投屏依赖
-├── ijkplayer/         # 旧版播放器内核（保留兼容）
+├── ijkplayer/         # 旧版播放器内核（保留兼容，仅 armeabi-v7a）
+├── thunder/           # 迅雷下载内核（仅 armeabi-v7a）
 ├── AdbLib/            # ADB 通信辅助
 ├── released/          # 版本信息（version.json）与发布资源
 └── .github/workflows/ # GitHub Actions 自动构建
 ```
+
+## 🧩 播放器内核与性能优化
+
+### 双内核对照
+
+| 内核 | 解码方式 | 适合场景 | 资源占用 | 所在安装包 |
+|---|---|---|---|---|
+| **ExoPlayer**（默认） | 硬件解码（MediaCodec） | 主流格式、绝大多数设备 | CPU / 内存占用低 | 全部架构 |
+| **IJKPlayer** | 软件解码（FFmpeg） | 老设备 / 冷门格式 / 硬解不兼容的流 | CPU / 内存占用较高 | 仅 armeabi-v7a |
+
+选择建议：**日常保持 ExoPlayer 即可**；当某台老电视 / 盒子播放黑屏、花屏、格式不支持时，在 Web 端「📺 投屏」页把「播放器内核」切到 IJKPlayer 重试，其 FFmpeg 软解兜底对老设备与冷门封装更友好。
+
+> 注意：IJK / 迅雷内核仅提供 `armeabi-v7a` 的 so，因此 **arm64-v8a 安装包不含这两个内核**，64 位包统一使用 ExoPlayer。需要 IJK 兜底时请安装 `armeabi-v7a` 或 `universal` 包。
+
+### ABI 分包带来的体积收益
+
+APK 体积的大头是 `lib/` 下的原生库（约 15MB，几乎全部是仅 32 位可用的 IJK / 迅雷内核 so）：
+
+- **老做法**：单包同时塞入所有 ABI，安装包臃肿；
+- **现在**：`armeabi-v7a` 与 `arm64-v8a` 各自独立成包 —— 32 位包体积小于合并包，64 位包因无需携带这两个 so 而**体积显著更小**；
+- `universal` 通用包作为兜底，仅在无法判断设备架构时使用。
+
+### 内存策略（面向低配设备）
+
+- **播放器进程隔离**：三个播放器 Activity 均声明 `android:process=":player"`，播放结束退出后整个播放进程由系统回收，**常驻的输入法主进程内存不受影响**；
+- **跨进程配置传递**：播放器在独立进程，配置不再直接读 SharedPreferences，而由主进程通过 Intent 传递 User-Agent，避免读到过期值；
+- **按需加载**：DLNA 服务、触摸注入器、更新检测均在首次使用时才初始化；
+- **内存压力自愈**：`IMEService.onTrimMemory()` 在系统内存吃紧时释放可重建的反射引用等资源；
+- **体积压缩**：Release 开启 R8（`minifyEnabled` + `shrinkResources`），并用 `resConfigs` 只保留中英文资源。
+
+> 关于 UPX：**不推荐**用 UPX 压缩 APK 内的 `.so`。UPX 属于"运行时自解压"，会占用额外内存，且其自解压桩需要可写可执行内存页，在 Android 10+ 的 W^X 限制下极易加载失败或崩溃，与"省内存"目标背道而驰。若要减小体积，应从 ABI 分包、R8、资源精简入手。
 
 ## 📄 License
 

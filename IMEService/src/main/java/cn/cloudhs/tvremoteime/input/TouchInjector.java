@@ -8,6 +8,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.WindowManager;
 
@@ -78,6 +79,13 @@ public class TouchInjector {
     }
 
     public boolean isAvailable() { return sAvailable; }
+
+    /** 释放持有的系统服务反射引用（内存吃紧时调用；下次创建实例会自动重新初始化） */
+    public static synchronized void release() {
+        sInputManager = null;
+        sInjectInputEventMethod = null;
+        sAvailable = false;
+    }
 
     /** 设置触摸板灵敏度 0.5~3.0 */
     public void setSensitivity(float s) { this.mSensitivity = Math.max(0.5f, Math.min(3.0f, s)); }
@@ -198,14 +206,38 @@ public class TouchInjector {
         MotionEvent ev = MotionEvent.obtain(now, now, MotionEvent.ACTION_SCROLL,
                 x, y, 0);
         ev.setSource(InputDevice.SOURCE_MOUSE);
+        boolean injected = false;
         try {
-            // setAxisValue 是 public 方法
-            ev.setAxisValue(MotionEvent.AXIS_VSCROLL, vScroll);
+            // MotionEvent#setAxisValue 属于系统隐藏接口，公开 SDK 中未导出，
+            // 直接调用无法通过编译，这里改用反射赋值；若当前系统不具备该方法，
+            // 则在下方退化为 DPAD 上下键翻动，保证老设备仍可使用。
+            Method setAxisValue = MotionEvent.class.getMethod(
+                    "setAxisValue", int.class, float.class);
+            setAxisValue.invoke(ev, MotionEvent.AXIS_VSCROLL, vScroll);
             inject(ev);
+            injected = true;
         } catch (Throwable t) {
-            Log.w(TAG, "滚轮注入失败，退化为 DPAD key", t);
+            Log.w(TAG, "滚轮事件不可用，退化为方向键翻动", t);
         }
         ev.recycle();
+        if (!injected) {
+            // vScroll > 0 表示向上滚动，对应 DPAD_UP；反之对应 DPAD_DOWN
+            injectKey(vScroll > 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
+        }
+    }
+
+    /** 注入一次按键（按下 + 抬起），用于滚轮不可用时的退化方案 */
+    private void injectKey(int keyCode) {
+        if (sInjectInputEventMethod == null || sInputManager == null) return;
+        long now = SystemClock.uptimeMillis();
+        KeyEvent down = new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0);
+        KeyEvent up = new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0);
+        try {
+            sInjectInputEventMethod.invoke(sInputManager, down, INJECT_INPUT_EVENT_MODE_ASYNC);
+            sInjectInputEventMethod.invoke(sInputManager, up, INJECT_INPUT_EVENT_MODE_ASYNC);
+        } catch (Throwable t) {
+            Log.e(TAG, "按键注入失败", t);
+        }
     }
 
     private void injectHoverMove(float x, float y) {

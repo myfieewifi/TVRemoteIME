@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="cn.cloudhs.tvremoteime">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -54,8 +55,11 @@
         </activity>
 
         <!-- 新版基于 ExoPlayer 的投屏播放器 -->
+        <!-- android:process=":player"：播放器单独进程运行，退出后由系统回收，
+             不占用常驻输入法主进程的内存，降低低配设备内存压力 -->
         <activity
             android:name=".player.ExoPlayerActivity"
+            android:process=":player"
             android:configChanges="orientation|keyboardHidden|screenSize|navigation"
             android:exported="false"
             android:label="@string/app_name"
@@ -77,6 +81,7 @@
         <!-- 保留原有 XL 迅雷下载播放器（旧入口兼容） -->
         <activity
             android:name="player.XLVideoPlayActivity"
+            android:process=":player"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:exported="false"
             android:label="@string/app_name"
@@ -89,6 +94,7 @@
 
         <activity
             android:name="com.zxt.dlna.dmp.IJKPlayer"
+            android:process=":player"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:launchMode="singleTop"
             android:exported="false"

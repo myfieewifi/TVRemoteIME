@@ -34,6 +34,8 @@ public class MainActivity extends android.app.Activity implements View.OnClickLi
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 记录全局 Application Context，供无入参的静态工具方法兜底使用
+        Environment.context = getApplicationContext();
         setContentView(R.layout.activity_main);
 
         qrCodeImage      = findViewById(R.id.ivQRCode);

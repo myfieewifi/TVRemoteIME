@@ -1,8 +1,10 @@
 package cn.cloudhs.tvremoteime.player;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -62,6 +64,14 @@ public class ExoPlayerActivity extends Activity {
     private Runnable hideControlsTask;
     private String videoUrl;
     private String videoTitle;
+
+    /** 接收主进程发来的「停止播放」广播（播放器跑在独立进程 :player，需跨进程通信） */
+    private final BroadcastReceiver stopReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            finish();
+        }
+    };
 
     public static void start(Context ctx, String url, String title) {
         Intent i = new Intent(ctx, ExoPlayerActivity.class);
@@ -125,6 +135,12 @@ public class ExoPlayerActivity extends Activity {
         });
 
         hideControlsTask = () -> showControls(false);
+        // 注册停止播放广播（主进程 /playStop 触发，跨进程可达）
+        try {
+            registerReceiver(stopReceiver,
+                    new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
+        } catch (Exception ignore) {}
+
         preparePlayer();
         showControls(true);
     }
@@ -134,7 +150,12 @@ public class ExoPlayerActivity extends Activity {
             player = new ExoPlayer.Builder(this).build();
             playerView.setPlayer(player);
 
-            String userAgent = AppConfig.getInstance(this).getPlayerUserAgent();
+            // 优先使用主进程通过 Intent 传入的 UA（跨进程 SharedPreferences 不保证实时同步），
+            // 未传入时回退读取本地持久化配置
+            String userAgent = getIntent().getStringExtra("userAgent");
+            if (userAgent == null || userAgent.trim().isEmpty()) {
+                userAgent = AppConfig.getInstance(this).getPlayerUserAgent();
+            }
 
             DefaultHttpDataSource.Factory httpFactory = new DefaultHttpDataSource.Factory()
                     .setUserAgent(userAgent)
@@ -190,7 +211,7 @@ public class ExoPlayerActivity extends Activity {
                 }
                 @Override public void onPlayerError(PlaybackException error) {
                     Log.e(TAG, "播放器错误", error);
-                    tvStatus.setText("播放失败：" + error.getCauseName());
+                    tvStatus.setText("播放失败：" + error.getErrorCodeName());
                     Toast.makeText(ExoPlayerActivity.this, "无法播放此视频", Toast.LENGTH_LONG).show();
                 }
             });
@@ -300,6 +321,9 @@ public class ExoPlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        try {
+            unregisterReceiver(stopReceiver);
+        } catch (Exception ignore) {}
         handler.removeCallbacksAndMessages(null);
         if (player != null) {
             player.stop();

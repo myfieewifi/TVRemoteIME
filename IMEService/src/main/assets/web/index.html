@@ -207,6 +207,15 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
     </div>
 
     <div class="cast-card" style="margin-top:12px;">
+      <label>播放器内核</label>
+      <select id="playerEngine" style="width:100%;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:14px;">
+        <option value="exo">ExoPlayer（推荐 · 硬解 · 省资源）</option>
+        <option value="ijk">IJKPlayer（软解兜底 · 仅 32 位包可用）</option>
+      </select>
+      <div class="tips" style="margin-top:8px;">💡 遇到黑屏 / 花屏 / 格式不支持时，可切换到 IJKPlayer 重试；arm64-v8a 安装包不含 IJK 内核。</div>
+    </div>
+
+    <div class="cast-card" style="margin-top:12px;">
       <label>播放器 User-Agent（部分视频源会校验 UA，留空则使用默认值）</label>
       <input type="text" id="playerUA" placeholder="默认：TVRemoteIME/1.0"/>
       <div class="row">
@@ -509,6 +518,7 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
     fetch('/api/config').then(r=>r.json()).then(cfg=>{
       $('#playerUA').value = cfg.playerUserAgent || cfg.defaultPlayerUserAgent || '';
       $('#playerUA').placeholder = '默认：' + (cfg.defaultPlayerUserAgent || 'TVRemoteIME/1.0');
+      $('#playerEngine').value = cfg.playerEngine || 'exo';
     }).catch(()=>{});
   }
   $('#btn-save-ua').addEventListener('click',()=>{
@@ -520,6 +530,14 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
     fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:''})})
       .then(r=>r.json()).then(()=>{toast('已恢复默认 UA');loadConfig();vibrate();}).catch(()=>toast('重置失败'));
   });
+
+  // ===== 播放器内核切换 =====
+  $('#playerEngine').addEventListener('change',()=>{
+    const engine=$('#playerEngine').value;
+    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerEngine:engine})})
+      .then(r=>r.json()).then(()=>{toast('已切换内核：'+(engine==='ijk'?'IJKPlayer':'ExoPlayer'));vibrate();}).catch(()=>toast('切换失败'));
+  });
+
   loadConfig();
 })();
 </script>

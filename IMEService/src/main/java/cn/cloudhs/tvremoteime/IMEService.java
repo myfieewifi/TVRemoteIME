@@ -85,6 +85,8 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		// 记录全局 Application Context，供无入参的静态工具方法兜底使用
+		Environment.context = getApplicationContext();
 		Environment.initToastHandler();
 		RemoteServerFileManager.resetBaseDir(this);
 		// 从持久化配置读取端口
@@ -113,6 +115,18 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 		}
 	}
 	private static volatile boolean sDLNAStarted = false;
+
+	/**
+	 * 内存压力回调：输入法是常驻进程，系统内存吃紧时主动释放可重建的资源，
+	 * 降低被系统直接回收（导致输入法失效）的概率。
+	 */
+	@Override
+	public void onTrimMemory(int level) {
+		super.onTrimMemory(level);
+		if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+			cn.cloudhs.tvremoteime.input.TouchInjector.release();
+		}
+	}
 
 	@Override
     public View onCreateInputView()  {
@@ -531,7 +545,7 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 				String addr = mServer.getServerAddress();
 				if(addressView != null) addressView.setText(addr);
 				if(qrCodeImage != null){
-					try{ qrCodeImage.setImageBitmap(QRCodeGen.createQRCode(addr, 320)); }catch(Exception ignored){}
+					try{ qrCodeImage.setImageBitmap(QRCodeGen.generateBitmap(addr, 320, 320)); }catch(Exception ignored){}
 				}
 			}
 			helpDialog.setVisibility(View.VISIBLE);
