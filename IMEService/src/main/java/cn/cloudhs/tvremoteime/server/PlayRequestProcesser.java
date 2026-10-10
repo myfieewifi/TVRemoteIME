@@ -52,7 +52,9 @@ public class PlayRequestProcesser implements RequestProcesser {
                     return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.BAD_REQUEST,
                             "{\"ok\":false,\"msg\":\"missing playUrl\"}");
                 }
-                try { url = URLDecoder.decode(url, "UTF-8"); } catch (Exception ignored) {}
+                // 注意：NanoHTTPD 的 decodeParms 已对查询参数做过一次百分号解码，
+                // 这里不能再 URLDecoder.decode，否则会把 base64 token 里的 "+" 解成空格、
+                // 或对残留 %xx 二次解码而损坏投屏地址（含签名 token 的 URL 会播不了）。
 
                 // 【内存优化】收到投屏请求时才懒启动 DLNA 服务，避免输入法常驻占内存
                 IMEService.ensureDLNAStarted(context);

@@ -63,7 +63,9 @@ public class AdbHelper {
         if(sendDataThread != null && sendDataThread.isAlive()) {
             sendDataThread.interrupt();
             try {
-                sendDataThread.join();
+                // 带超时 join：stop() 可能在 IMEService.onDestroy（主线程）里被调用，
+                // 若 adb 工作线程正阻塞在 try2Connect 的 socket connect，无超时 join 会拖死主线程导致 ANR
+                sendDataThread.join(1000);
             } catch (InterruptedException e) {
             }
         }
@@ -148,6 +150,13 @@ public class AdbHelper {
                     @Override
                     public void onClosed() {
                         Log.i(TAG, "adb已断开连接。");
+                        // stop() 会先把 context 置 null，而本回调由 AdbLib 读线程在
+                        // connection.close() 之后异步触发，此时 context 已为 null，
+                        // 直接 context.getString 会 NPE 并把进程带崩（输入法 onDestroy 时必现）
+                        if (adbHelper.context == null) {
+                            try { connection = null; } catch (Exception ignored) {}
+                            return;
+                        }
                         Environment.toastInHandler(adbHelper.context, context.getString(R.string.app_name)  + "和adb服务已断开连接。");
                         try {
                             connection.close();

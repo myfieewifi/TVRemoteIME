@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 路径声明：覆盖 APK 可能落地的所有目录。
+  - external-cache-path：在线更新下载的 APK（AutoUpdateManager 用 getExternalCacheDir()）
+  - external-path / external-files-path：上传安装、其它下载路径兜底
+  Android 7.0 (API 24) 起禁止用 file:// URI 通过 Intent 暴露文件，
+  必须 content:// + FLAG_GRANT_READ_URI_PERMISSION，否则 FileUriExposedException。
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-cache-path name="external_cache" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-path name="external_storage" path="." />
+    <files-path name="internal_files" path="." />
+    <cache-path name="internal_cache" path="." />
+</paths>

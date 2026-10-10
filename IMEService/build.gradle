@@ -86,4 +86,6 @@ dependencies {
     implementation 'com.google.android.exoplayer:exoplayer-dash:2.19.1'
     implementation 'com.google.android.exoplayer:exoplayer-rtsp:2.19.1'
     implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+    // FileProvider 所在：在线更新 / 上传安装 APK 在 Android 7.0+ 必须用 content:// URI
+    implementation 'androidx.core:core:1.6.0'
 }

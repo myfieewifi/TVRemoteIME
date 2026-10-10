@@ -8,8 +8,11 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+
+import androidx.core.content.FileProvider;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -156,9 +159,19 @@ public class AppPackagesHelper {
 
     public static void installPackage(final File apkFile, final Context context){
         try {
-            Uri uri = Uri.fromFile(apkFile);
+            // Android 7.0 (API 24) 起禁止用 file:// URI 通过 Intent 暴露文件，
+            // 否则 FileUriExposedException 会被下方 catch 吞掉，整个 OTA 更新链路静默失败。
+            // 改用 FileProvider 生成 content:// URI 并授予临时读权限。
+            Uri uri;
             Intent intent = new Intent();
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                uri = FileProvider.getUriForFile(context,
+                        context.getPackageName() + ".fileprovider", apkFile);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } else {
+                uri = Uri.fromFile(apkFile);
+            }
             intent.setAction(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             context.startActivity(intent);

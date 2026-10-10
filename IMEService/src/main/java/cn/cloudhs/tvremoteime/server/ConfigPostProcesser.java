@@ -5,8 +5,6 @@ import android.util.Log;
 
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.Map;
 
 import cn.cloudhs.tvremoteime.AppConfig;
@@ -37,16 +35,12 @@ public class ConfigPostProcesser implements RequestProcesser {
                                          Map<String, String> params,
                                          Map<String, String> files) {
         try {
-            StringBuilder body = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(session.getInputStream(), "UTF-8"))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    body.append(line);
-                }
-            }
+            // RemoteServer.serveHttp 对所有 POST 已先执行 session.parseBody(files)，
+            // 请求体已被完整读走（非表单的 JSON body 存于 files.get("postData")），
+            // 此时再读 session.getInputStream() 只能得到 EOF，必须从 files 取值
+            String bodyStr = files != null && files.get("postData") != null
+                    ? files.get("postData").trim() : "";
             JSONObject json;
-            String bodyStr = body.toString().trim();
             if (bodyStr.isEmpty()) {
                 // 兼容 form 表单提交
                 json = new JSONObject();

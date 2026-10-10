@@ -126,6 +126,18 @@
         </service>
 
         <activity android:name=".widget.ScreenShotActivity" android:exported="false"/>
+
+        <!-- APK 安装用 FileProvider：Android 7.0 (API 24) 起禁止 file:// URI 暴露，
+             在线更新 / 上传安装必须改用 content:// URI 并授予读权限 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

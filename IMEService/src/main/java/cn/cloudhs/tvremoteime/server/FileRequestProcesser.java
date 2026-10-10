@@ -165,15 +165,31 @@ public class FileRequestProcesser  implements RequestProcesser {
         String uploadPathName  = params.get("path");
         String localFilename = files.get("file");
         boolean r = false;
+        // 上传成功后供前端拉取播放的可下载 URL（/file/download/<相对 externalStorage 的路径>）
+        String downloadUrl = "";
         if(!TextUtils.isEmpty(uploadFileName)) {
             if (!TextUtils.isEmpty(localFilename)) {
-                File saveFilename = new File(Environment.getExternalStorageDirectory(), uploadPathName);
+                // 去掉前导/重复斜杠：new File(parent, "/x") 在 Linux 上会被当成绝对路径，
+                // 文件会落到根目录（不可写）导致 rename 失败
+                String cleanPath = uploadPathName == null ? "" : uploadPathName.replaceAll("^/+", "");
+                File baseDir = cleanPath.isEmpty() ? Environment.getExternalStorageDirectory()
+                        : new File(Environment.getExternalStorageDirectory(), cleanPath);
                 File localFile = new File(localFilename);
-                saveFilename = new File(saveFilename,localFile.getName());
+                File saveFilename = new File(baseDir, localFile.getName());
                 r = localFile.renameTo(saveFilename);
+                if (r) {
+                    String root = Environment.getExternalStorageDirectory().getAbsolutePath();
+                    String abs = saveFilename.getAbsolutePath();
+                    String rel = abs.startsWith(root) ? abs.substring(root.length()) : "/" + localFile.getName();
+                    if (!rel.startsWith("/")) rel = "/" + rel;
+                    downloadUrl = "/file/download" + rel;
+                }
             }
         }
-        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,  "{\"success\":" + (r ? "true": "false") + "}");
+        // 前端正则 /(https?:\/\/[^\s"']+|\/file\/[^\s"']+)/ 从响应里提取播放地址填入 castUrl，
+        // 必须返回 /file/download/... 才能命中，否则上传后无法接播
+        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                "{\"success\":" + (r ? "true": "false") + ",\"url\":\"" + downloadUrl + "\"}");
     }
 
     private void batchDeleteFile(String paths){

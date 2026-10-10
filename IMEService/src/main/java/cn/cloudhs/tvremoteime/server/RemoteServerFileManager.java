@@ -123,7 +123,9 @@ public class RemoteServerFileManager implements NanoHTTPD.TempFileManager {
     public static void clearAllFiles(){
         try{
             if(filesDir.exists()) deleteDirFiles(filesDir);
-            if(tmpDataDir.exists()) deleteDirFiles(filesDir);
+            // 修复笔误：条件判的是 tmpDataDir，删除的却写成了 filesDir（等于把 filesDir 删了两遍，
+            // temp 目录从不被清理，上传临时文件持续累积占满存储）
+            if(tmpDataDir.exists()) deleteDirFiles(tmpDataDir);
             if(playerCacheDir != null && playerCacheDir.exists()) deleteDirFiles(playerCacheDir);
             File torrentFile = getPlayTorrentFile();
             if(torrentFile.exists()) torrentFile.delete();

@@ -21,6 +21,10 @@ public class HTTPGet {
             URL url = new URL(uri);
             HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
+            // 默认超时为 0（无限）：国内电视盒子访问 GitHub 被防火墙丢包时，TCP connect 会挂数分钟，
+            // 把 /api/version（检查更新）和下载链路整个拖死。这里显式限超时。
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(8000);
             conn.setRequestProperty("Accept", "text/html, application/xhtml+xml, image/jxr, */*");
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36");
@@ -64,6 +68,8 @@ public class HTTPGet {
             URL url = new URL(uri);
             HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(15000);
             conn.setRequestProperty("Accept", "text/html, application/xhtml+xml, image/jxr, */*");
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36");

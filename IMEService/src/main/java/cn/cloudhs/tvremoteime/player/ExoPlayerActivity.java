@@ -150,7 +150,9 @@ public class ExoPlayerActivity extends Activity {
         if (videoUrl == null) videoUrl = getIntent().getStringExtra("url");
         if (videoTitle == null) videoTitle = mFromDLNA ? "DLNA投屏" : "投屏播放";
 
-        try { videoUrl = URLDecoder.decode(videoUrl, "UTF-8"); } catch (Exception ignore) {}
+        // 不再二次 URLDecoder.decode：投屏地址在 PlayRequestProcesser 处经由 NanoHTTPD
+        // decodeParms 已做过一次百分号解码，这里再解会把 base64 token 里的 "+" 解成空格、
+        // 或对残留 %xx 二次解码而损坏地址（含签名 token 的 URL 会播不了）。
 
         tvTitle.setText(videoTitle);
         tvStatus.setText("准备中...");
