@@ -1,13 +1,8 @@
-apply plugin: 'com.android.library'
-android {
-    compileSdkVersion 33
-    buildToolsVersion '33.0.2'
-    defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 33
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
+// AdbLib: 纯 Java 实现的 ADB 协议库 (com.cgutman.adblib)
+// 注意：不是 Android 库，无 Android 代码与资源，因此用 java-library 插件
+apply plugin: 'java-library'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }

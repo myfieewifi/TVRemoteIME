@@ -9,17 +9,23 @@ on:
 jobs:
   build:
     name: Build Android APK
-    runs-on: ubuntu-latest
+    # 锁死 Ubuntu 版本，避免 2026-10-19 自动迁移到 Ubuntu 26 带来的不确定性
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        # 升级到 v5，消除 Node.js 20 / setup-java v4 的弃用警告
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -36,25 +42,25 @@ jobs:
 
       - name: "Build Release APK (all ABIs: armeabi-v7a, arm64-v8a, x86, x86_64)"
         run: |
-          # 先确保 gradle wrapper 可执行并正常构建
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
         id: collect
         run: |
-          # 查找生成的 release apk
           APK_NAME="TVRemoteIME-${GITHUB_REF_NAME:-debug}.apk"
           APK_RAW=$(find IMEService/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_RAW" ]; then
+            echo "::error::Release APK not found, build output:"
+            find IMEService/build -name "*.apk" || true
+            exit 1
+          fi
           APK_OUT="$(dirname "$APK_RAW")/$APK_NAME"
           mv "$APK_RAW" "$APK_OUT"
           echo "apk_path=$APK_OUT" >> $GITHUB_OUTPUT
           echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
           ls -lh "$APK_OUT"
-          # 查看 APK 包含的 ABI（确认多架构成功）
-          if [ -f "$APK_OUT" ]; then
-            # 使用 unzip 查看 lib/ 目录下的 ABI
-            unzip -l "$APK_OUT" | grep "lib/" || echo "no native libs dir"
-          fi
+          echo "--- ABI contents ---"
+          unzip -l "$APK_OUT" | grep -E "lib/[^/]+/" | sort -u
 
       - name: Create Release & Upload APK
         if: startsWith(github.ref, 'refs/tags/v')
@@ -72,9 +78,11 @@ jobs:
             请参考 `released/version.json` 中的完整更新日志。
 
             ### 🔧 构建信息
-            - JDK: 17
-            - Target SDK: 33
-            - Min SDK: 21
+            - OS: Ubuntu 24.04
+            - JDK: 17 (Temurin)
+            - Android Gradle Plugin: 7.4.2
+            - Compile / Target SDK: 33
+            - Min SDK: 21（兼容 Android 5.0 及以上）
             - 构建时间: ${{ github.event.head_commit.timestamp }}
           draft: false
           prerelease: false
