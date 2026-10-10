@@ -16,7 +16,7 @@
 
 ## 🚀 使用方法
 
-1. 打开https://github.com/myfieewifi/TVRemoteIME/releases；
+1. 打开https://github.com/myfieewifi/TVRemoteIME/releases
 2. 按电视 / 盒子的 CPU 架构选择对应安装包（不确定就选 `universal` 通用包）下载，之后安装到设备；
 3. 进入系统设置 → 输入法，启用「云视远程输入法」并将其**设为默认**；
 4. 打开 App，页面会显示本机的 HTTP 服务地址，例如 `http://192.168.1.100:9978`；
