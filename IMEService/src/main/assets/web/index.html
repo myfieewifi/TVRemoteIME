@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#4f6dff"/>
+<title>云视远程输入法</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;
+  background:linear-gradient(160deg,#1a1f3c 0%,#2a1f5c 50%,#4a2a8f 100%);color:#fff;
+  user-select:none;-webkit-user-select:none;touch-action:none;}
+#app{display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;position:relative;}
+/* 顶部状态栏 */
+.topbar{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;}
+.topbar .title{font-size:18px;font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.topbar .right{display:flex;align-items:center;gap:10px;}
+.update-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 12px;border-radius:16px;font-size:12px;}
+.update-btn.has{background:linear-gradient(135deg,#ff9966,#ff5e62);animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,94,98,.5);}50%{box-shadow:0 0 0 8px rgba(255,94,98,0);}}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.85;}
+.dot{width:8px;height:8px;border-radius:50%;background:#ff5555;box-shadow:0 0 8px #ff5555;}
+.dot.ok{background:#55e58a;box-shadow:0 0 8px #55e58a;}
+/* Tab */
+.tabs{display:flex;padding:4px 12px 10px;gap:8px;}
+.tab{flex:1;padding:10px 0;text-align:center;border-radius:14px;font-size:14px;font-weight:500;
+  background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);color:#c9d0ff;transition:all .2s;}
+.tab.active{background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;box-shadow:0 6px 18px rgba(94,123,255,.35);}
+/* 面板容器 */
+.panel{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:4px 18px 90px;display:none;}
+.panel.active{display:block;}
+/* ===== 遥控面板 ===== */
+.dpad-wrap{display:flex;flex-direction:column;align-items:center;margin-top:8px;}
+.dpad{position:relative;width:240px;height:240px;margin-top:14px;}
+.dpad .ring{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.12),rgba(255,255,255,.03) 60%,rgba(0,0,0,.25));
+  box-shadow:inset 0 2px 8px rgba(255,255,255,.08),0 12px 28px rgba(0,0,0,.4);}
+.arrow{position:absolute;width:68px;height:68px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.05));border-radius:50%;
+  font-size:26px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);}
+.arrow:active{transform:scale(.92);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
+.arrow.up{top:12px;left:50%;transform:translateX(-50%);}
+.arrow.up:active{transform:translateX(-50%) scale(.92);}
+.arrow.down{bottom:12px;left:50%;transform:translateX(-50%);}
+.arrow.down:active{transform:translateX(-50%) scale(.92);}
+.arrow.left{top:50%;left:12px;transform:translateY(-50%);}
+.arrow.left:active{transform:translateY(-50%) scale(.92);}
+.arrow.right{top:50%;right:12px;transform:translateY(-50%);}
+.arrow.right:active{transform:translateY(-50%) scale(.92);}
+.ok{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;
+  background:linear-gradient(145deg,#ffffff 0%,#d7defd 100%);color:#4a3aa0;display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;letter-spacing:2px;box-shadow:0 8px 22px rgba(94,90,255,.35),inset 0 -4px 0 rgba(0,0,0,.08);}
+.ok:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 4px 10px rgba(94,90,255,.25);}
+.func-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px;width:100%;max-width:360px;}
+.func-btn{padding:14px 0;border-radius:14px;font-size:13px;text-align:center;
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  box-shadow:0 4px 10px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.1);font-weight:500;}
+.func-btn:active{transform:scale(.95);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
+.vol-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px;width:100%;max-width:360px;}
+/* ===== 触摸板面板 ===== */
+.touchpad{margin-top:10px;border-radius:22px;width:100%;height:300px;
+  background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.35);
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.touchpad::after{content:"触摸板 · 滑动移动光标 · 轻点点击";position:absolute;color:rgba(255,255,255,.35);font-size:13px;pointer-events:none;}
+.touchpad.active{background:linear-gradient(145deg,rgba(94,123,255,.25),rgba(163,91,255,.18));}
+.touch-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+.sens-row{margin-top:14px;display:flex;align-items:center;gap:10px;font-size:13px;color:#c9d0ff;}
+.sens-row input{flex:1;accent-color:#8a4dff;}
+/* ===== 输入面板 ===== */
+.input-wrap{margin-top:14px;}
+textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:12px;font-size:16px;
+  background:rgba(255,255,255,.92);color:#222;resize:vertical;outline:none;}
+.input-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.input-btns button{padding:12px 0;border-radius:12px;border:none;font-size:14px;color:#fff;font-weight:500;
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  box-shadow:0 4px 10px rgba(0,0,0,.25);}
+.input-btns button.primary{background:linear-gradient(135deg,#5e7bff,#a35bff);}
+.input-btns button:active{transform:scale(.96);}
+.quick-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px;}
+.qk{padding:10px 0;text-align:center;border-radius:10px;font-size:13px;
+  background:rgba(255,255,255,.07);color:#dfe4ff;}
+.qk:active{background:#5e7bff;}
+/* ===== 投屏面板 ===== */
+.cast-card{margin-top:14px;padding:16px;border-radius:18px;
+  background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+  box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1);}
+.cast-card label{display:block;font-size:12px;color:#c9d0ff;margin-bottom:6px;}
+.cast-card input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:none;font-size:15px;
+  background:rgba(255,255,255,.92);color:#222;outline:none;margin-bottom:10px;}
+.cast-card .row{display:flex;gap:8px;margin-top:4px;}
+.cast-card .row button{flex:1;padding:12px;border-radius:12px;border:none;color:#fff;font-size:14px;font-weight:500;
+  background:linear-gradient(135deg,#5e7bff,#a35bff);}
+.cast-card .row button.gray{background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.06));}
+.cast-card .row button:active{transform:scale(.97);}
+.tips{font-size:12px;color:#c9d0ff;line-height:1.7;margin-top:12px;opacity:.8;}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);
+  color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;}
+.toast.show{opacity:1;}
+/* 底部 home 条预留 */
+.safe{height:env(safe-area-inset-bottom);}
+.brand{text-align:center;font-size:11px;opacity:.5;margin:10px 0 14px;letter-spacing:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="title">📺 云视远程输入法 <span id="localVer" style="font-size:11px;opacity:.6;"></span></div>
+    <div class="right">
+      <button class="update-btn" id="btnUpdate">🔔 检查更新</button>
+      <div class="status"><span class="dot" id="dot"></span><span id="stxt">连接中…</span></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="remote">🎮 遥控</div>
+    <div class="tab" data-tab="touch">👆 触摸</div>
+    <div class="tab" data-tab="input">⌨️ 输入</div>
+    <div class="tab" data-tab="cast">📺 投屏</div>
+  </div>
+
+  <!-- 遥控 -->
+  <div class="panel active" id="p-remote">
+    <div class="dpad-wrap">
+      <div class="dpad">
+        <div class="ring"></div>
+        <div class="arrow up" data-key="KEYCODE_DPAD_UP">▲</div>
+        <div class="arrow down" data-key="KEYCODE_DPAD_DOWN">▼</div>
+        <div class="arrow left" data-key="KEYCODE_DPAD_LEFT">◀</div>
+        <div class="arrow right" data-key="KEYCODE_DPAD_RIGHT">▶</div>
+        <div class="ok" data-key="KEYCODE_DPAD_CENTER">OK</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;">
+      <div class="func-row" style="max-width:360px;">
+        <div class="func-btn" data-key="KEYCODE_BACK">↩ 返回</div>
+        <div class="func-btn" data-key="KEYCODE_HOME">🏠 主页</div>
+        <div class="func-btn" data-key="KEYCODE_MENU">≡ 菜单</div>
+        <div class="func-btn" data-key="KEYCODE_SEARCH">🔍 搜索</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;">
+      <div class="vol-row">
+        <div class="func-btn" data-key="KEYCODE_VOLUME_UP">🔊 音量+</div>
+        <div class="func-btn" data-key="KEYCODE_VOLUME_DOWN">🔉 音量-</div>
+      </div>
+    </div>
+    <div class="brand">云视远程输入法 · 长按方向键可连发</div>
+  </div>
+
+  <!-- 触摸板 -->
+  <div class="panel" id="p-touch">
+    <div class="touchpad" id="touchpad"></div>
+    <div class="touch-tools">
+      <div class="func-btn" id="t-click">👆 单击</div>
+      <div class="func-btn" id="t-long">⏳ 长按</div>
+      <div class="func-btn" id="t-back">↩ 返回</div>
+      <div class="func-btn" id="t-home">🏠 居中</div>
+    </div>
+    <div class="sens-row">
+      <span>灵敏度</span>
+      <input type="range" id="sens" min="0.6" max="3" step="0.1" value="1.6">
+      <span id="sensv">1.6</span>
+    </div>
+    <div class="tips">提示：单指滑动移动光标；手指按下抬起=点击；双击屏幕=双击；右侧上下滑动=滚轮。</div>
+  </div>
+
+  <!-- 输入 -->
+  <div class="panel" id="p-input">
+    <div class="input-wrap">
+      <textarea id="txt" placeholder="在这里输入文字，点击发送即可一键输入到电视"></textarea>
+      <div class="input-btns">
+        <button class="primary" id="btn-send">发送</button>
+        <button id="btn-del">⌫ 删除</button>
+        <button id="btn-enter">⏎ 回车</button>
+        <button id="btn-cls">🗑 清空</button>
+      </div>
+      <div class="quick-keys">
+        <div class="qk" data-k="KEYCODE_0">0</div><div class="qk" data-k="KEYCODE_1">1</div>
+        <div class="qk" data-k="KEYCODE_2">2</div><div class="qk" data-k="KEYCODE_3">3</div>
+        <div class="qk" data-k="KEYCODE_4">4</div><div class="qk" data-k="KEYCODE_5">5</div>
+        <div class="qk" data-k="KEYCODE_6">6</div><div class="qk" data-k="KEYCODE_7">7</div>
+        <div class="qk" data-k="KEYCODE_8">8</div><div class="qk" data-k="KEYCODE_9">9</div>
+        <div class="qk" data-k="KEYCODE_MINUS">-</div><div class="qk" data-k="KEYCODE_EQUALS">=</div>
+      </div>
+      <div class="tips">💡 也可直接使用电脑/手机键盘方向键、回车、退格等（本页面聚焦时）。</div>
+    </div>
+  </div>
+
+  <!-- 投屏 -->
+  <div class="panel" id="p-cast">
+    <div class="cast-card">
+      <label>视频直链地址（支持 mp4/mkv/m3u8/rtsp/dash 等）</label>
+      <input type="text" id="castUrl" placeholder="https://example.com/video.mp4 或 .m3u8"/>
+      <label>标题（可选）</label>
+      <input type="text" id="castTitle" placeholder="例如：测试视频"/>
+      <div class="row">
+        <button id="btn-play">▶ 播放 (新内核)</button>
+        <button class="gray" id="btn-stop">⏹ 停止</button>
+      </div>
+    </div>
+    <div class="cast-card" style="margin-top:12px;">
+      <label>本地文件推送（上传后播放，请使用小文件测试）</label>
+      <input type="file" id="castFile" accept="video/*" style="color:#fff;font-size:13px;"/>
+      <div class="tips">✨ v1.0 内核升级到 ExoPlayer 2.19.1，流畅度、格式兼容性、缓冲策略全面提升，支持 HLS/DASH/RTSP。</div>
+    </div>
+
+    <div class="cast-card" style="margin-top:12px;">
+      <label>播放器 User-Agent（部分视频源会校验 UA，留空则使用默认值）</label>
+      <input type="text" id="playerUA" placeholder="默认：TVRemoteIME/1.0"/>
+      <div class="row">
+        <button id="btn-save-ua" style="background:linear-gradient(135deg,#4f6dff,#7c5cff);">💾 保存设置</button>
+        <button class="gray" id="btn-reset-ua">↺ 恢复默认</button>
+      </div>
+      <div class="tips" style="margin-top:8px;">💡 修改后立即生效，投屏播放器发起 HTTP 请求时使用。</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  const $ = s=>document.querySelector(s);
+  const $$ = s=>document.querySelectorAll(s);
+
+  // ===== Tab 切换 =====
+  $$('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      $$('.tab').forEach(x=>x.classList.remove('active'));
+      $$('.panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      $('#p-'+t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ===== Toast =====
+  const toastEl = $('#toast');
+  let toastTimer=null;
+  function toast(msg){
+    toastEl.textContent=msg;toastEl.classList.add('show');
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600);
+  }
+  function vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms||12);}
+
+  // ===== WebSocket =====
+  let ws=null, retry=0, connected=false;
+  const dot=$('#dot'), stxt=$('#stxt');
+  function setStatus(ok,msg){dot.classList.toggle('ok',!!ok);stxt.textContent=msg;}
+
+  function connect(){
+    const proto = location.protocol==='https:'?'wss':'ws';
+    const url = proto+'://'+location.host+'/ws';
+    try{ ws = new WebSocket(url); }catch(e){ retryLater(); return; }
+    ws.onopen = ()=>{ connected=true; retry=0; setStatus(true,'已连接'); };
+    ws.onclose= ()=>{ connected=false; setStatus(false,'已断开，重连中…'); retryLater(); };
+    ws.onerror= ()=>{ try{ws.close();}catch(e){} };
+    ws.onmessage = (ev)=>{
+      try{
+        const m = JSON.parse(ev.data);
+        if(m.type==='ack' && m.ok===false){ toast('操作失败，可能无注入权限'); }
+      }catch(e){}
+    };
+  }
+  function retryLater(){ retry++; setTimeout(connect, Math.min(1000*Math.pow(1.5,Math.min(retry,6)),10000)); }
+  connect();
+
+  function send(o){
+    if(!connected || ws.readyState!==1){
+      // 退回 HTTP POST
+      httpPost(o);
+      return;
+    }
+    try{ ws.send(JSON.stringify(o)); }catch(e){ httpPost(o); }
+  }
+  function httpPost(o){
+    const body = new URLSearchParams();
+    if(o.type==='key'||o.type==='keydown'||o.type==='keyup'){
+      body.set('code',o.code); fetch('/'+o.type,{method:'POST',body});
+    } else if(o.type==='text'){
+      body.set('text',o.text); fetch('/text',{method:'POST',body});
+    } else if(o.type==='touch'){
+      body.set('action',o.action||'move');
+      if(o.dx!=null) body.set('dx',o.dx);
+      if(o.dy!=null) body.set('dy',o.dy);
+      const sens = $('#sens').value; body.set('sens',sens);
+      fetch('/touch',{method:'POST',body});
+    }
+  }
+
+  function pressKey(code){ send({type:'key',code}); vibrate(); }
+
+  // ===== 遥控方向键 & 功能键 =====
+  $$('[data-key]').forEach(el=>{
+    let repeatTimer=null, repeatInterval=null;
+    const code = el.dataset.key;
+    const start=e=>{
+      e.preventDefault();
+      send({type:'keydown',code});
+      vibrate(8);
+      el.style.transform='scale(.92)';
+      repeatTimer=setTimeout(()=>{
+        repeatInterval=setInterval(()=>send({type:'key',code}),90);
+      },400);
+    };
+    const end=e=>{
+      e&&e.preventDefault();
+      clearTimeout(repeatTimer);clearInterval(repeatInterval);
+      send({type:'keyup',code});
+      // 如果没到长按阈值，发送一次点击
+      el.style.transform='';
+    };
+    el.addEventListener('touchstart',start,{passive:false});
+    el.addEventListener('touchend',end);
+    el.addEventListener('touchcancel',end);
+    el.addEventListener('mousedown',start);
+    el.addEventListener('mouseup',end);
+    el.addEventListener('mouseleave',end);
+  });
+
+  // ===== 触摸板 =====
+  const tp = $('#touchpad');
+  let lastX=0,lastY=0,touching=false,startX=0,startY=0,startT=0,moved=false,tapCount=0,lastTapTime=0;
+  function handleStart(x,y){
+    lastX=x;lastY=y;startX=x;startY=y;startT=Date.now();touching=true;moved=false;
+    tp.classList.add('active');
+    send({type:'touch',action:'down',dx:0,dy:0});
+  }
+  function handleMove(x,y){
+    if(!touching)return;
+    const dx=x-lastX, dy=y-lastY;
+    lastX=x;lastY=y;
+    if(Math.abs(dx)+Math.abs(dy)>3) moved=true;
+    // 右侧 1/4 区域上下滑=滚轮
+    const rect=tp.getBoundingClientRect();
+    if(x > rect.right - rect.width*0.22){
+      if(Math.abs(dy)>2) send({type:'touch',action:'scroll',dx:0,dy:dy});
+    } else {
+      send({type:'touch',action:'move',dx:dx,dy:dy});
+    }
+  }
+  function handleEnd(){
+    if(!touching)return;touching=false;
+    tp.classList.remove('active');
+    const dt=Date.now()-startT;
+    const dist=Math.hypot(lastX-startX,lastY-startY);
+    send({type:'touch',action:'up',dx:0,dy:0});
+    // 轻点
+    if(!moved && dt<280 && dist<8){
+      const now=Date.now();
+      if(now-lastTapTime<320){
+        send({type:'touch',action:'click'});
+        send({type:'touch',action:'click'});
+        tapCount=0;lastTapTime=0;
+      } else {
+        tapCount=1;lastTapTime=now;
+        setTimeout(()=>{ if(tapCount===1){ send({type:'touch',action:'click'}); tapCount=0; } },300);
+      }
+      vibrate(10);
+    } else if(!moved && dt>550 && dist<8){
+      send({type:'touch',action:'longclick'});
+      vibrate(30);
+    }
+  }
+  tp.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];handleStart(t.clientX,t.clientY);},{passive:false});
+  tp.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];handleMove(t.clientX,t.clientY);},{passive:false});
+  tp.addEventListener('touchend',e=>{e.preventDefault();handleEnd();},{passive:false});
+  tp.addEventListener('touchcancel',e=>{handleEnd();},{passive:false});
+  tp.addEventListener('mousedown',e=>{handleStart(e.clientX,e.clientY);});
+  window.addEventListener('mousemove',e=>{if(touching)handleMove(e.clientX,e.clientY);});
+  window.addEventListener('mouseup',()=>{if(touching)handleEnd();});
+
+  $('#t-click').addEventListener('click',()=>{send({type:'touch',action:'click'});vibrate();});
+  $('#t-long').addEventListener('click',()=>{send({type:'touch',action:'longclick'});vibrate(20);});
+  $('#t-back').addEventListener('click',()=>pressKey('KEYCODE_BACK'));
+  $('#t-home').addEventListener('click',()=>{send({type:'touch',action:'home'});toast('光标已归位');});
+
+  const sens=$('#sens'),sensv=$('#sensv');
+  sens.addEventListener('input',()=>{sensv.textContent=sens.value;localStorage.setItem('tv_sens',sens.value);});
+  const savedSens=localStorage.getItem('tv_sens');
+  if(savedSens){sens.value=savedSens;sensv.textContent=savedSens;}
+
+  // ===== 输入面板 =====
+  $('#btn-send').addEventListener('click',()=>{
+    const t=$('#txt').value;
+    if(t){ send({type:'text',text:t}); toast('已发送'); vibrate(); }
+  });
+  $('#btn-del').addEventListener('click',()=>{pressKey('KEYCODE_DEL');});
+  $('#btn-enter').addEventListener('click',()=>{pressKey('KEYCODE_ENTER');});
+  $('#btn-cls').addEventListener('click',()=>{
+    $('#txt').value='';
+    fetch('/key?code=cls',{method:'POST',body:new URLSearchParams('code=cls')}).catch(()=>{});
+    // 兼容：走 /key?code=cls
+    const b=new URLSearchParams();b.set('code','cls');fetch('/key',{method:'POST',body:b});
+    toast('已清空输入框');
+  });
+  $$('.qk').forEach(q=>q.addEventListener('click',()=>pressKey(q.dataset.k)));
+
+  // ===== PC 键盘支持 =====
+  window.addEventListener('keydown',e=>{
+    // 如果用户在输入框里打字，就不拦截
+    if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')) return;
+    let code=null;
+    switch(e.key){
+      case 'ArrowUp':code='KEYCODE_DPAD_UP';break;
+      case 'ArrowDown':code='KEYCODE_DPAD_DOWN';break;
+      case 'ArrowLeft':code='KEYCODE_DPAD_LEFT';break;
+      case 'ArrowRight':code='KEYCODE_DPAD_RIGHT';break;
+      case 'Enter':code='KEYCODE_DPAD_CENTER';break;
+      case 'Backspace':code='KEYCODE_DEL';break;
+      case 'Escape':code='KEYCODE_BACK';break;
+      case 'Home':code='KEYCODE_HOME';break;
+      case ' ':code='KEYCODE_MEDIA_PLAY_PAUSE';e.preventDefault();break;
+    }
+    if(code){ e.preventDefault(); if(!e.repeat) send({type:'keydown',code}); else send({type:'key',code}); }
+  });
+  window.addEventListener('keyup',e=>{
+    if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')) return;
+    let code=null;
+    switch(e.key){
+      case 'ArrowUp':code='KEYCODE_DPAD_UP';break;
+      case 'ArrowDown':code='KEYCODE_DPAD_DOWN';break;
+      case 'ArrowLeft':code='KEYCODE_DPAD_LEFT';break;
+      case 'ArrowRight':code='KEYCODE_DPAD_RIGHT';break;
+      case 'Enter':code='KEYCODE_DPAD_CENTER';break;
+      case 'Backspace':code='KEYCODE_DEL';break;
+      case 'Escape':code='KEYCODE_BACK';break;
+      case 'Home':code='KEYCODE_HOME';break;
+      case ' ':code='KEYCODE_MEDIA_PLAY_PAUSE';break;
+    }
+    if(code){ send({type:'keyup',code}); }
+  });
+
+  // ===== 投屏 =====
+  $('#btn-play').addEventListener('click',()=>{
+    const u=$('#castUrl').value.trim();
+    if(!u){toast('请输入视频地址');return;}
+    const t=$('#castTitle').value.trim()||'投屏播放';
+    const b=new URLSearchParams();b.set('playUrl',u);b.set('title',t);
+    fetch('/play',{method:'POST',body:b}).then(r=>r.text()).then(()=>toast('已发起播放')).catch(()=>toast('请求失败'));
+    vibrate();
+  });
+  $('#btn-stop').addEventListener('click',()=>{
+    fetch('/playStop',{method:'POST'}).then(()=>toast('已停止'));
+    vibrate();
+  });
+  $('#castFile').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const fd=new FormData();fd.append('file',f);
+    toast('上传中：'+f.name);
+    fetch('/upload',{method:'POST',body:fd}).then(r=>r.text()).then(txt=>{
+      const m=txt.match(/(https?:\/\/[^\s"']+|\/file\/[^\s"']+)/);
+      if(m){
+        const url = m[1].startsWith('http')?m[1]:location.origin+m[1];
+        $('#castUrl').value=url;
+        toast('上传成功，准备播放');
+      } else toast('上传完成');
+    }).catch(()=>toast('上传失败'));
+  });
+
+  // ===== 版本检查（前端），每个新版本只提示一次（localStorage） =====
+  const DISMISS_KEY = 'cloudhs_dismissed_update_code';
+  function showUpdateDialog(info){
+    const mask = document.createElement('div');
+    mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    mask.innerHTML = `
+      <div style="max-width:360px;width:100%;background:linear-gradient(160deg,#2a2060,#4a2a8f);border-radius:18px;padding:22px;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <div style="font-size:18px;font-weight:600;margin-bottom:10px;">🎉 发现新版本 v${info.versionName||''}</div>
+        <div style="font-size:13px;line-height:1.7;color:#d7daff;white-space:pre-wrap;">${(info.message||'').replace(/</g,'&lt;')}</div>
+        <div style="display:flex;gap:10px;margin-top:18px;">
+          ${info.forced?'':`<button data-act="later" style="flex:1;padding:11px 0;border-radius:12px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:14px;">本次忽略</button>`}
+          <button data-act="update" style="flex:1;padding:11px 0;border-radius:12px;border:none;background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;font-size:14px;font-weight:600;">立即更新</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    mask.addEventListener('click', e=>{
+      const act = e.target.dataset && e.target.dataset.act;
+      if(act==='later'){ localStorage.setItem(DISMISS_KEY, info.versionCode); mask.remove(); }
+      else if(act==='update'){
+        if(info.updateUrl) window.open(info.updateUrl,'_blank');
+        localStorage.setItem(DISMISS_KEY, info.versionCode);
+        mask.remove();
+      }
+    });
+  }
+  function checkUpdate(manual){
+    fetch('/api/version').then(r=>r.json()).then(info=>{
+      $('#localVer').textContent='v'+(info.localVersionName||'');
+      const btn=$('#btnUpdate');
+      btn.classList.remove('has');
+      btn.textContent='🔔 检查更新';
+      if(info.hasUpdate){
+        const dismissed = parseInt(localStorage.getItem(DISMISS_KEY)||'0',10);
+        if(manual || info.forced || info.versionCode > dismissed){
+          showUpdateDialog(info);
+          btn.classList.add('has');
+          btn.textContent='🔔 有新版本';
+        }
+      } else if(manual){
+        toast('当前已是最新版本 v'+info.localVersionName);
+      }
+    }).catch(()=>{ if(manual) toast('检查更新失败'); });
+  }
+  $('#btnUpdate').addEventListener('click',()=>{ checkUpdate(true); vibrate(); });
+  setTimeout(()=>checkUpdate(false), 1500);
+
+  // ===== 播放器 UA 设置 =====
+  function loadConfig(){
+    fetch('/api/config').then(r=>r.json()).then(cfg=>{
+      $('#playerUA').value = cfg.playerUserAgent || cfg.defaultPlayerUserAgent || '';
+      $('#playerUA').placeholder = '默认：' + (cfg.defaultPlayerUserAgent || 'TVRemoteIME/1.0');
+    }).catch(()=>{});
+  }
+  $('#btn-save-ua').addEventListener('click',()=>{
+    const ua=$('#playerUA').value.trim();
+    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:ua})})
+      .then(r=>r.json()).then(()=>{toast('UA 已保存，下次投屏生效');vibrate();}).catch(()=>toast('保存失败'));
+  });
+  $('#btn-reset-ua').addEventListener('click',()=>{
+    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:''})})
+      .then(r=>r.json()).then(()=>{toast('已恢复默认 UA');loadConfig();vibrate();}).catch(()=>toast('重置失败'));
+  });
+  loadConfig();
+})();
+</script>
+</body>
+</html>

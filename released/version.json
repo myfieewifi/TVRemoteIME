@@ -1,0 +1,7 @@
+{
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "message": "云视远程输入法 v1.0.0 首发版本\n\n· 全新蓝紫风格 Web UI，手机/电脑均可控制\n· 投屏播放器内核升级为 ExoPlayer 2.19.1，支持 MP4/MKV/HLS/DASH/RTSP\n· 支持自定义播放器 User-Agent，适配需要 UA 校验的视频源\n· 新增触摸板控制，支持滑动/点击/长按/滚轮\n· 修复方向键在弹框/Dialog 场景失效的问题\n· 输入法常驻内存优化，按需加载投屏/DLNA/更新模块\n· 支持 GitHub Release 在线更新，每个新版本只提示一次\n· 配置持久化（端口、UA、灵敏度、更新开关等）",
+  "installAPK": "https://github.com/myfieewifi/TVRemoteIME/releases/download/v1.0.0/TVRemoteIME-v1.0.0.apk",
+  "forced": false
+}

@@ -1,0 +1,165 @@
+package cn.cloudhs.tvremoteime;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * 云视远程输入法 - 全局配置持久化
+ * 使用 SharedPreferences 存储用户设置，修改后立即生效
+ */
+public class AppConfig {
+    private static final String PREF_NAME = "app_config";
+    private static AppConfig instance;
+
+    // 配置 key
+    private static final String KEY_SERVER_PORT = "server_port";
+    private static final String KEY_AUTO_START_DLNA = "auto_start_dlna";
+    private static final String KEY_CHECK_UPDATE = "check_update_on_start";
+    private static final String KEY_TOUCH_SENSITIVITY = "touch_sensitivity";
+    private static final String KEY_DISMISSED_UPDATE = "dismissed_update_code";
+    private static final String KEY_DLNA_NAME_SUFFIX = "dlna_name_suffix";
+    private static final String KEY_PLAYER_UA = "player_user_agent";
+
+    // 默认值
+    public static final int DEFAULT_PORT = 9978;
+    public static final float DEFAULT_TOUCH_SENSITIVITY = 1.2f;
+    public static final String DEFAULT_PLAYER_UA =
+            "TVRemoteIME/" + AppPackagesHelper.getCurrentPackageVersion(null);
+
+    private final SharedPreferences sp;
+
+    private AppConfig(Context context) {
+        sp = context.getApplicationContext()
+                .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    }
+
+    public static synchronized AppConfig getInstance(Context context) {
+        if (instance == null) {
+            instance = new AppConfig(context);
+        }
+        return instance;
+    }
+
+    /** HTTP 服务端口 */
+    public int getServerPort() {
+        return sp.getInt(KEY_SERVER_PORT, DEFAULT_PORT);
+    }
+
+    public void setServerPort(int port) {
+        sp.edit().putInt(KEY_SERVER_PORT, port).apply();
+    }
+
+    /** 启动时是否自动开启 DLNA 投屏服务 */
+    public boolean isAutoStartDLNA() {
+        return sp.getBoolean(KEY_AUTO_START_DLNA, false);
+    }
+
+    public void setAutoStartDLNA(boolean auto) {
+        sp.edit().putBoolean(KEY_AUTO_START_DLNA, auto).apply();
+    }
+
+    /** 启动时是否检查更新 */
+    public boolean isCheckUpdateOnStart() {
+        return sp.getBoolean(KEY_CHECK_UPDATE, true);
+    }
+
+    public void setCheckUpdateOnStart(boolean check) {
+        sp.edit().putBoolean(KEY_CHECK_UPDATE, check).apply();
+    }
+
+    /** 触摸板灵敏度（0.6 ~ 3.0） */
+    public float getTouchSensitivity() {
+        return sp.getFloat(KEY_TOUCH_SENSITIVITY, DEFAULT_TOUCH_SENSITIVITY);
+    }
+
+    public void setTouchSensitivity(float sensitivity) {
+        sp.edit().putFloat(KEY_TOUCH_SENSITIVITY,
+                Math.max(0.6f, Math.min(3.0f, sensitivity))).apply();
+    }
+
+    /** 已忽略的更新版本号（每个新版本只提示一次） */
+    public int getDismissedUpdateCode() {
+        return sp.getInt(KEY_DISMISSED_UPDATE, 0);
+    }
+
+    public void setDismissedUpdateCode(int versionCode) {
+        sp.edit().putInt(KEY_DISMISSED_UPDATE, versionCode).apply();
+    }
+
+    /** DLNA 设备名后缀（如"客厅"） */
+    public String getDLNANameSuffix() {
+        return sp.getString(KEY_DLNA_NAME_SUFFIX, "");
+    }
+
+    public void setDLNANameSuffix(String suffix) {
+        sp.edit().putString(KEY_DLNA_NAME_SUFFIX,
+                suffix == null ? "" : suffix.trim()).apply();
+    }
+
+    /** 播放器 UserAgent（投屏/直链播放使用） */
+    public String getPlayerUserAgent() {
+        String ua = sp.getString(KEY_PLAYER_UA, "");
+        return (ua == null || ua.trim().isEmpty()) ? DEFAULT_PLAYER_UA : ua.trim();
+    }
+
+    public void setPlayerUserAgent(String ua) {
+        if (ua == null || ua.trim().isEmpty()) {
+            sp.edit().remove(KEY_PLAYER_UA).apply();
+        } else {
+            sp.edit().putString(KEY_PLAYER_UA, ua.trim()).apply();
+        }
+    }
+
+    /** 序列化为 JSON，供 Web 前端 /api/config 读取 */
+    public JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("serverPort", getServerPort());
+            json.put("autoStartDLNA", isAutoStartDLNA());
+            json.put("checkUpdateOnStart", isCheckUpdateOnStart());
+            json.put("touchSensitivity", getTouchSensitivity());
+            json.put("dlnaNameSuffix", getDLNANameSuffix());
+            json.put("playerUserAgent", getPlayerUserAgent());
+            json.put("defaultPlayerUserAgent", DEFAULT_PLAYER_UA);
+            json.put("versionCode", AppPackagesHelper.getCurrentPackageVersionCode(null));
+            json.put("versionName", AppPackagesHelper.getCurrentPackageVersion(null));
+        } catch (JSONException ignored) {}
+        return json;
+    }
+
+    /** 从 JSON 对象批量应用配置（POST /api/config 使用） */
+    public void applyFromJson(JSONObject json) throws JSONException {
+        SharedPreferences.Editor editor = sp.edit();
+        if (json.has("serverPort")) {
+            editor.putInt(KEY_SERVER_PORT, json.getInt("serverPort"));
+        }
+        if (json.has("autoStartDLNA")) {
+            editor.putBoolean(KEY_AUTO_START_DLNA,
+                    json.getBoolean("autoStartDLNA"));
+        }
+        if (json.has("checkUpdateOnStart")) {
+            editor.putBoolean(KEY_CHECK_UPDATE,
+                    json.getBoolean("checkUpdateOnStart"));
+        }
+        if (json.has("touchSensitivity")) {
+            editor.putFloat(KEY_TOUCH_SENSITIVITY,
+                    (float) json.getDouble("touchSensitivity"));
+        }
+        if (json.has("dlnaNameSuffix")) {
+            editor.putString(KEY_DLNA_NAME_SUFFIX,
+                    json.getString("dlnaNameSuffix"));
+        }
+        if (json.has("playerUserAgent")) {
+            String ua = json.getString("playerUserAgent");
+            if (ua == null || ua.trim().isEmpty()) {
+                editor.remove(KEY_PLAYER_UA);
+            } else {
+                editor.putString(KEY_PLAYER_UA, ua.trim());
+            }
+        }
+        editor.apply();
+    }
+}

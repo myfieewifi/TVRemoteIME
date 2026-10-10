@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">云视远程输入法</string>
+    <string name="keyboard_name">云视远程输入法</string>
+    <string name="step_activate">请在输入法设置中启用「云视远程输入法」</string>
+    <string name="step_default">将「云视远程输入法」设为默认输入法</string>
+    <string name="status_enabled">已启用</string>
+    <string name="status_disabled">未启用</string>
+    <string name="status_default">已设为默认</string>
+    <string name="status_not_default">未设为默认</string>
+    <string name="copy_address">复制地址</string>
+    <string name="address_copied">服务地址已复制到剪贴板</string>
+    <string name="btn_ime_settings">输入法设置</string>
+    <string name="btn_app_settings">应用设置</string>
+    <string name="btn_check_update">检查更新</string>
+    <string name="btn_about">关于</string>
+    <string name="btn_start_service">启动服务</string>
+    <string name="access_hint">请在手机浏览器访问以下地址，即可遥控电视</string>
+    <string name="toast_latest">当前已是最新版本</string>
+    <string name="toast_checking">正在检查更新…</string>
+    <string name="toast_network_error">检查更新失败，请检查网络</string>
+    <string name="about_title">关于云视远程输入法</string>
+    <string name="dlna_name_hint">DLNA 设备名后缀（如：客厅）</string>
+</resources>

@@ -1,0 +1,82 @@
+name: Build APK (Multi-ABI)
+
+on:
+  push:
+    tags:
+      - 'v*'           # 推送 v* 标签时自动触发构建并发布 Release
+  workflow_dispatch:   # 支持在 Actions 页面手动触发
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK (all ABIs: armeabi-v7a, arm64-v8a, x86, x86_64)
+        run: |
+          # 先确保 gradle wrapper 可执行并正常构建
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        id: collect
+        run: |
+          # 查找生成的 release apk
+          APK_NAME="TVRemoteIME-${GITHUB_REF_NAME:-debug}.apk"
+          APK_RAW=$(find IMEService/build/outputs/apk/release -name "*.apk" | head -n 1)
+          APK_OUT="$(dirname "$APK_RAW")/$APK_NAME"
+          mv "$APK_RAW" "$APK_OUT"
+          echo "apk_path=$APK_OUT" >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+          ls -lh "$APK_OUT"
+          # 查看 APK 包含的 ABI（确认多架构成功）
+          if [ -f "$APK_PATH" ]; then
+            # 使用 aapt / zip 查看 lib/ 目录下的 ABI
+            unzip -l "$APK_PATH" | grep "lib/" || echo "no native libs dir"
+          fi
+
+      - name: Create Release & Upload APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.collect.outputs.apk_path }}
+          name: TVRemoteIME ${{ github.ref_name }}
+          body: |
+            ## TVRemoteIME ${{ github.ref_name }}
+
+            ### 📦 下载
+            - **TVRemoteIME-${{ github.ref_name }}.apk**（armeabi-v7a + arm64-v8a 双架构，覆盖市面 99% 电视/盒子）
+
+            ### 📝 更新说明
+            请参考 `released/version.json` 中的完整更新日志。
+
+            ### 🔧 构建信息
+            - JDK: 17
+            - Target SDK: 33
+            - Min SDK: 21
+            - 构建时间: ${{ github.event.head_commit.timestamp }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

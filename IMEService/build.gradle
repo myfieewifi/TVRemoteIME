@@ -1,0 +1,46 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 33
+    buildToolsVersion '33.0.2'
+
+    defaultConfig {
+        applicationId 'cn.cloudhs.tvremoteime'
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0.0"
+        vectorDrawables.useSupportLibrary = true
+        ndk {
+            // ijkplayer/thunder 只提供 armeabi-v7a 的 so，核心功能（遥控/ExoPlayer/输入法/触摸）是纯 Java 全架构兼容
+            // arm64 设备可兼容运行 armeabi-v7a so；如需 x86 模拟器可自行补充对应 so 或在此加 abi
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        debug{
+            minifyEnabled false
+        }
+        release{
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation project(path: ':ijkplayer')
+    implementation project(path: ':AdbLib')
+    implementation project(path: ':DroidDLNA')
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-hls:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-dash:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-rtsp:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
+}
