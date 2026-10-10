@@ -1,6 +1,7 @@
 package cn.cloudhs.tvremoteime;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
@@ -22,7 +23,10 @@ public class IMEServiceBroadCastReceiver extends BroadcastReceiver {
                MEDIA_MOUNTED.equals(intent.getAction())) {
            if(!Environment.isDefaultIME(context)) {
                Log.d(TAG, "startService.....");
-               context.startService(new Intent(IMEService.ACTION));
+               // Android 5.0+ 禁止隐式 Intent 启动 Service，改为显式 ComponentName
+               Intent svc = new Intent();
+               svc.setComponent(new ComponentName(context, IMEService.class));
+               context.startService(svc);
                if(AdbHelper.getInstance() == null) AdbHelper.createInstance();
            }
        }

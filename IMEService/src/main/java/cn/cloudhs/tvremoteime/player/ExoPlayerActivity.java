@@ -123,14 +123,25 @@ public class ExoPlayerActivity extends Activity {
         btnRew.setOnClickListener(v -> seekBack());
         btnFull.setOnClickListener(v -> toggleControls());
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            boolean seeking = false;
+            boolean wasPlaying = false;
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && player != null) tvPos.setText(formatTime(progress));
+                if (fromUser && player != null) {
+                    long dur = player.getDuration();
+                    long pos = dur > 0 ? dur * progress / seekBar.getMax() : progress;
+                    tvPos.setText(formatTime(pos));
+                }
             }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) { seeking = true; }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {
+                wasPlaying = player != null && player.isPlaying();
+                if (wasPlaying) player.pause();
+            }
             @Override public void onStopTrackingTouch(SeekBar seekBar) {
-                if (player != null) player.seekTo(seekBar.getProgress());
-                seeking = false;
+                if (player != null) {
+                    long dur = player.getDuration();
+                    long pos = dur > 0 ? dur * seekBar.getProgress() / seekBar.getMax() : seekBar.getProgress();
+                    player.seekTo(pos);
+                    if (wasPlaying) player.play();
+                }
             }
         });
 
@@ -258,8 +269,9 @@ public class ExoPlayerActivity extends Activity {
         long dur = player.getDuration();
         long pos = player.getCurrentPosition();
         if (dur > 0 && dur != C.TIME_UNSET) {
-            seekBar.setMax((int) dur);
-            seekBar.setProgress((int) pos);
+            // SeekBar 用 0~1000 的比例值，避免长视频毫秒数过大导致 int 越界
+            int max = seekBar.getMax();
+            seekBar.setProgress((int) (pos * max / dur));
             tvPos.setText(formatTime(pos));
             tvDur.setText(formatTime(dur));
         } else {
@@ -309,10 +321,12 @@ public class ExoPlayerActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                 togglePlay(); return true;
             case KeyEvent.KEYCODE_BACK:
-                if (mControlsShowing && controls.getVisibility() != View.VISIBLE) {
-                    finish(); return true;
+                // 控制条显示时，按一次返回先隐藏控制条；控制条已隐藏则退出播放器
+                if (mControlsShowing && controls.getVisibility() == View.VISIBLE) {
+                    showControls(false);
+                    return true;
                 }
-                showControls(false);
+                finish();
                 return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -335,12 +349,13 @@ public class ExoPlayerActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (player != null && Util.SDK_INT <= 23) player.pause();
+        // API 23 及以下在 onPause 暂停，API 24+ 在 onStop 暂停（ExoPlayer 官方建议）
+        if (player != null && Util.SDK_INT <= 23) player.setPlayWhenReady(false);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (player != null && Util.SDK_INT > 23) player.pause();
+        if (player != null && Util.SDK_INT > 23) player.setPlayWhenReady(false);
     }
 }

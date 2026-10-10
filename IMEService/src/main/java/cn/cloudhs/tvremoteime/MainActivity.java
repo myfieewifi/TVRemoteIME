@@ -3,6 +3,7 @@ package cn.cloudhs.tvremoteime;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -111,7 +112,10 @@ public class MainActivity extends android.app.Activity implements View.OnClickLi
         } else if (id == R.id.btnSetIME || id == R.id.rowDefault) {
             showInputMethodPicker();
         } else if (id == R.id.btnStartService) {
-            startService(new Intent(IMEService.ACTION));
+            Intent svc = new Intent();
+            svc.setComponent(new ComponentName(this, IMEService.class));
+            startService(svc);
+            Toast.makeText(this, "服务已启动", Toast.LENGTH_SHORT).show();
             if (!Environment.isDefaultIME(this)) {
                 if (AdbHelper.getInstance() == null) AdbHelper.createInstance();
             }

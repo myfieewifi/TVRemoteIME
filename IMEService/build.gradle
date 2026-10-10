@@ -38,6 +38,9 @@ android {
             minifyEnabled false
         }
         release {
+            // 沿用 debug 签名，保证 Release 产物可直接安装（个人 / 内网发布场景）。
+            // 如需上架应用市场，请替换为自己的正式签名配置。
+            signingConfig signingConfigs.debug
             // R8 代码压缩 + 资源压缩：剔除未使用的类 / 资源，进一步减小体积。
             // 若线上出现异常（反射类被误删），可将这两项改回 false 快速回滚。
             minifyEnabled true

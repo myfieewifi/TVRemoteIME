@@ -27,8 +27,12 @@ public class AppConfig {
     // 默认值
     public static final int DEFAULT_PORT = 9978;
     public static final float DEFAULT_TOUCH_SENSITIVITY = 1.2f;
-    public static final String DEFAULT_PLAYER_UA =
-            "TVRemoteIME/" + AppPackagesHelper.getCurrentPackageVersion(null);
+    /** 默认播放器 UA：懒加载，避免类初始化时 Environment.context 尚未赋值导致 NPE */
+    public static String getDefaultPlayerUserAgent() {
+        String ver = AppPackagesHelper.getCurrentPackageVersion(
+                Environment.context != null ? Environment.context : null);
+        return "TVRemoteIME/" + (ver == null || ver.isEmpty() ? "1.0" : ver);
+    }
     /**
      * 播放器内核：
      *   exo = ExoPlayer（默认，硬件解码，CPU/内存占用低，全架构可用）
@@ -111,7 +115,7 @@ public class AppConfig {
     /** 播放器 UserAgent（投屏/直链播放使用） */
     public String getPlayerUserAgent() {
         String ua = sp.getString(KEY_PLAYER_UA, "");
-        return (ua == null || ua.trim().isEmpty()) ? DEFAULT_PLAYER_UA : ua.trim();
+        return (ua == null || ua.trim().isEmpty()) ? getDefaultPlayerUserAgent() : ua.trim();
     }
 
     public void setPlayerUserAgent(String ua) {
@@ -146,7 +150,7 @@ public class AppConfig {
             json.put("touchSensitivity", getTouchSensitivity());
             json.put("dlnaNameSuffix", getDLNANameSuffix());
             json.put("playerUserAgent", getPlayerUserAgent());
-            json.put("defaultPlayerUserAgent", DEFAULT_PLAYER_UA);
+            json.put("defaultPlayerUserAgent", getDefaultPlayerUserAgent());
             json.put("playerEngine", getPlayerEngine());
             json.put("defaultPlayerEngine", DEFAULT_PLAYER_ENGINE);
         } catch (JSONException ignored) {}
