@@ -67,7 +67,7 @@ public class AppConfig {
 
     /** 启动时是否自动开启 DLNA 投屏服务 */
     public boolean isAutoStartDLNA() {
-        return sp.getBoolean(KEY_AUTO_START_DLNA, false);
+        return sp.getBoolean(KEY_AUTO_START_DLNA, true);
     }
 
     public void setAutoStartDLNA(boolean auto) {

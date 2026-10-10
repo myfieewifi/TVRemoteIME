@@ -86,12 +86,16 @@ public class FileRequestProcesser  implements RequestProcesser {
     }
 
     private NanoHTTPD.Response responseDirData(String dirName) {
+        try {
+            dirName = java.net.URLDecoder.decode(dirName == null ? "" : dirName, "UTF-8");
+        } catch (Exception ignore) {}
         File path = new File(Environment.getExternalStorageDirectory(), dirName);
         String root = Environment.getExternalStorageDirectory().getPath();
         JSONArray dirs = new JSONArray();
         JSONArray files = new JSONArray();
         try {
             File[] subfiles = path.listFiles();
+            if (subfiles == null) subfiles = new File[0];
             Arrays.sort(subfiles, new Comparator<File>() {
                 @Override
                 public int compare(File f1, File f2) {
@@ -103,10 +107,10 @@ public class FileRequestProcesser  implements RequestProcesser {
                 if(file.isHidden()) continue;
                 JSONObject item = new JSONObject();
                 item.put("name", file.getName());
-                item.put("path", file.getPath().substring(root.length()));
-                item.put("fullPath", file.getPath());
+                String relPath = file.getPath().substring(root.length());
+                item.put("path", relPath.isEmpty() ? "/" : relPath);
+                item.put("fullPath", file.getPath().substring(root.length()));
                 if (file.isDirectory()) {
-                    //item.put("total", 0);
                     dirs.put(item);
                 }else {
                     item.put("size", file.length());
@@ -116,7 +120,10 @@ public class FileRequestProcesser  implements RequestProcesser {
             }
 
             JSONObject data = new JSONObject();
-            if(!TextUtils.isEmpty(dirName) && dirName != "/") data.put("parent", path.getParent().substring(root.length()));
+            if(!TextUtils.isEmpty(dirName)) {
+                String parentRel = path.getParent() == null ? null : path.getParent().substring(root.length());
+                if(!TextUtils.isEmpty(parentRel)) data.put("parent", parentRel);
+            }
             data.put("dirs", dirs);
             data.put("files", files);
             return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, data.toString());

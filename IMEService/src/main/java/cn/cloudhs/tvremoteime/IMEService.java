@@ -92,8 +92,19 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 		// 从持久化配置读取端口
 		RemoteServer.serverPort = AppConfig.getInstance(this).getServerPort();
 		startRemoteServer();
-		// 【内存优化】DLNA投屏服务默认不随输入法启动，收到投屏/DLNA相关请求时再懒加载启动
-		// DLNAUtils.startDLNAService(this.getApplicationContext());
+		// 启动前台守护服务（常驻通知，防系统杀后台）
+		try {
+			Intent guard = new Intent(this, cn.cloudhs.tvremoteime.service.ForegroundGuardService.class);
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(guard);
+			else startService(guard);
+		} catch (Throwable ignore) {}
+		// DLNA 投屏服务（DMR）需要持续在线，手机视频 APP 才能搜索到本设备并投屏；
+		// 默认随输入法启动（autoStartDLNA，默认开启），可在配置中关闭
+		try {
+			if (AppConfig.getInstance(this).isAutoStartDLNA()) {
+				ensureDLNAStarted(getApplicationContext());
+			}
+		} catch (Throwable ignore) {}
 		// 【内存优化】更新检测延迟30秒再执行，每个版本只弹一次提示
 		final AutoUpdateManager updater = new AutoUpdateManager(IMEService.this);
 		handler.postDelayed(new Runnable() {

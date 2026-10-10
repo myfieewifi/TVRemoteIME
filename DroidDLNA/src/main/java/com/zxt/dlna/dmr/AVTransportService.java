@@ -94,34 +94,31 @@ public class AVTransportService extends AbstractAVTransportService {
                        }else if(contentType.startsWith("audio")){
                            type = "audio";
                        }else{
-                           throw new AVTransportException(
-                                   ErrorCode.INVALID_ARGS, "URI format error."
-                           );
+                           // 未知 Content-Type 不再拒绝，默认按视频处理
+                           type = "video";
                        }
                        name = representation.getUrl().getFile();
                    }else{
-                       throw new AVTransportException(
-                               ErrorCode.INVALID_ARGS, "URI error."
-                       );
+                       type = "video";
+                       name = representation.getUrl().getFile();
                    }
                 }
             } catch (Exception ex) {
-                if(TextUtils.isEmpty(currentURIMetaData)) {
-                    throw new AVTransportException(
-                            AVTransportErrorCode.RESOURCE_NOT_FOUND, ex.getMessage()
-                    );
+                // 许多视频源的 HEAD 探测会失败（防盗链/重定向/需特定 UA），
+                // 此时不再中断投屏，默认按视频处理，交由播放器实际拉流判断
+                Log.w(TAG, "HEAD 探测失败，按视频处理: " + ex.getMessage());
+                if (type == null) {
+                    type = "video";
                 }
             }
         } else if (!currentURI.startsWith("file:")) {
-            throw new AVTransportException(
-                    ErrorCode.INVALID_ARGS, "Only HTTP and file: resource identifiers are supported"
-            );
+            // rtsp 等非 http/file 协议也不再直接拒绝，交给播放器处理
+            Log.w(TAG, "非标准流协议，按视频处理: " + currentURI);
+            type = "video";
         }
 
-        // TODO: Check mime type of resource against supported types
-        // TODO: DIDL fragment parsing and handling of currentURIMetaData
+        // 解析 DIDL 元数据中的媒体类型与标题
         if(!TextUtils.isEmpty(currentURIMetaData)) {
-            type = "image";
             if (currentURIMetaData.contains("object.item.videoItem")) {
                 type = "video";
             } else if (currentURIMetaData.contains("object.item.imageItem")) {
@@ -129,10 +126,16 @@ public class AVTransportService extends AbstractAVTransportService {
             } else if (currentURIMetaData.contains("object.item.audioItem")) {
                 type = "audio";
             }
-            name = currentURIMetaData.substring(currentURIMetaData.indexOf("<dc:title>") + 10,
-                    currentURIMetaData.indexOf("</dc:title>"));
+            // 安全提取标题：缺少 <dc:title> 时不再抛 StringIndexOutOfBounds 导致投屏失败
+            int ts = currentURIMetaData.indexOf("<dc:title>");
+            int te = currentURIMetaData.indexOf("</dc:title>");
+            if (ts >= 0 && te > ts + 10) {
+                name = currentURIMetaData.substring(ts + 10, te);
+            }
         }
-        Log.d(TAG, name);
+        if (type == null) type = "video";
+        if (name == null || name.trim().isEmpty()) name = "DLNA 投屏";
+        Log.d(TAG, "type=" + type + ", name=" + name);
 
         getInstance(instanceId).setURI(uri,type,name,currentURIMetaData);
     }

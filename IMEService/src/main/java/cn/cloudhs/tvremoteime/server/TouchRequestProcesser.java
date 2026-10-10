@@ -61,6 +61,12 @@ public class TouchRequestProcesser implements RequestProcesser {
         }
 
         boolean ok;
+        if ("hide".equalsIgnoreCase(action)) {
+            // 离开触摸板时隐藏自绘光标浮层
+            ti.hideCursor();
+            return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                    "{\"ok\":true,\"available\":" + ti.isAvailable() + "}");
+        }
         try {
             ok = ti.sendTouch(action, dx, dy);
         } catch (Throwable t) {

@@ -13,94 +13,122 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;
   user-select:none;-webkit-user-select:none;touch-action:none;}
 #app{display:flex;flex-direction:column;height:100%;max-width:520px;margin:0 auto;position:relative;}
 /* 顶部状态栏 */
-.topbar{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;}
-.topbar .title{font-size:18px;font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
-.topbar .right{display:flex;align-items:center;gap:10px;}
-.update-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 12px;border-radius:16px;font-size:12px;}
+.topbar{padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar .title{font-size:17px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:6px;}
+.topbar .right{display:flex;align-items:center;gap:8px;}
+.update-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 11px;border-radius:14px;font-size:12px;}
 .update-btn.has{background:linear-gradient(135deg,#ff9966,#ff5e62);animation:pulse 1.4s infinite;}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,94,98,.5);}50%{box-shadow:0 0 0 8px rgba(255,94,98,0);}}
-.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.85;}
-.dot{width:8px;height:8px;border-radius:50%;background:#ff5555;box-shadow:0 0 8px #ff5555;}
-.dot.ok{background:#55e58a;box-shadow:0 0 8px #55e58a;}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;opacity:.85;}
+.dot{width:7px;height:7px;border-radius:50%;background:#ff5555;box-shadow:0 0 6px #ff5555;}
+.dot.ok{background:#55e58a;box-shadow:0 0 6px #55e58a;}
 /* Tab */
-.tabs{display:flex;padding:4px 12px 10px;gap:8px;}
-.tab{flex:1;padding:10px 0;text-align:center;border-radius:14px;font-size:14px;font-weight:500;
+.tabs{display:flex;padding:4px 10px 8px;gap:6px;flex-shrink:0;overflow-x:auto;}
+.tab{padding:9px 10px;text-align:center;border-radius:12px;font-size:13px;font-weight:500;white-space:nowrap;min-width:62px;
   background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);color:#c9d0ff;transition:all .2s;}
-.tab.active{background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;box-shadow:0 6px 18px rgba(94,123,255,.35);}
+.tab.active{background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;box-shadow:0 4px 14px rgba(94,123,255,.35);}
 /* 面板容器 */
-.panel{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:4px 18px 90px;display:none;}
+.panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 14px 20px;display:none;}
 .panel.active{display:block;}
 /* ===== 遥控面板 ===== */
-.dpad-wrap{display:flex;flex-direction:column;align-items:center;margin-top:8px;}
-.dpad{position:relative;width:240px;height:240px;margin-top:14px;}
+.dpad-wrap{display:flex;flex-direction:column;align-items:center;margin-top:4px;}
+.dpad{position:relative;width:220px;height:220px;margin-top:8px;}
 .dpad .ring{position:absolute;inset:0;border-radius:50%;
   background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.12),rgba(255,255,255,.03) 60%,rgba(0,0,0,.25));
-  box-shadow:inset 0 2px 8px rgba(255,255,255,.08),0 12px 28px rgba(0,0,0,.4);}
-.arrow{position:absolute;width:68px;height:68px;display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 2px 8px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.35);}
+.arrow{position:absolute;width:60px;height:60px;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.05));border-radius:50%;
-  font-size:26px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);}
+  font-size:22px;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.15);}
 .arrow:active{transform:scale(.92);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
-.arrow.up{top:12px;left:50%;transform:translateX(-50%);}
+.arrow.up{top:6px;left:50%;transform:translateX(-50%);}
 .arrow.up:active{transform:translateX(-50%) scale(.92);}
-.arrow.down{bottom:12px;left:50%;transform:translateX(-50%);}
+.arrow.down{bottom:6px;left:50%;transform:translateX(-50%);}
 .arrow.down:active{transform:translateX(-50%) scale(.92);}
-.arrow.left{top:50%;left:12px;transform:translateY(-50%);}
+.arrow.left{top:50%;left:6px;transform:translateY(-50%);}
 .arrow.left:active{transform:translateY(-50%) scale(.92);}
-.arrow.right{top:50%;right:12px;transform:translateY(-50%);}
+.arrow.right{top:50%;right:6px;transform:translateY(-50%);}
 .arrow.right:active{transform:translateY(-50%) scale(.92);}
-.ok{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;
+.ok{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;
   background:linear-gradient(145deg,#ffffff 0%,#d7defd 100%);color:#4a3aa0;display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:700;letter-spacing:2px;box-shadow:0 8px 22px rgba(94,90,255,.35),inset 0 -4px 0 rgba(0,0,0,.08);}
-.ok:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 4px 10px rgba(94,90,255,.25);}
-.func-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px;width:100%;max-width:360px;}
-.func-btn{padding:14px 0;border-radius:14px;font-size:13px;text-align:center;
+  font-size:18px;font-weight:700;letter-spacing:2px;box-shadow:0 6px 18px rgba(94,90,255,.35),inset 0 -3px 0 rgba(0,0,0,.08);}
+.ok:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 3px 8px rgba(94,90,255,.25);}
+.func-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px;width:100%;max-width:360px;}
+.func-btn{padding:13px 0;border-radius:12px;font-size:13px;text-align:center;
   background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
-  box-shadow:0 4px 10px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.1);font-weight:500;}
+  box-shadow:0 3px 8px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1);font-weight:500;}
 .func-btn:active{transform:scale(.95);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
-.vol-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px;width:100%;max-width:360px;}
+.vol-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;width:100%;max-width:360px;}
 /* ===== 触摸板面板 ===== */
-.touchpad{margin-top:10px;border-radius:22px;width:100%;height:300px;
+.touchpad{margin-top:8px;border-radius:18px;width:100%;height:260px;
   background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.35);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 6px 18px rgba(0,0,0,.3);
   position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .touchpad::after{content:"触摸板 · 滑动移动光标 · 轻点点击";position:absolute;color:rgba(255,255,255,.35);font-size:13px;pointer-events:none;}
 .touchpad.active{background:linear-gradient(145deg,rgba(94,123,255,.25),rgba(163,91,255,.18));}
-.touch-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
-.sens-row{margin-top:14px;display:flex;align-items:center;gap:10px;font-size:13px;color:#c9d0ff;}
+.touch-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+.sens-row{margin-top:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:#c9d0ff;}
 .sens-row input{flex:1;accent-color:#8a4dff;}
 /* ===== 输入面板 ===== */
-.input-wrap{margin-top:14px;}
-textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:12px;font-size:16px;
+.input-wrap{margin-top:10px;}
+textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:12px;font-size:15px;
   background:rgba(255,255,255,.92);color:#222;resize:vertical;outline:none;}
-.input-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
-.input-btns button{padding:12px 0;border-radius:12px;border:none;font-size:14px;color:#fff;font-weight:500;
+.input-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px;}
+.input-btns button{padding:11px 0;border-radius:11px;border:none;font-size:13px;color:#fff;font-weight:500;
   background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
-  box-shadow:0 4px 10px rgba(0,0,0,.25);}
+  box-shadow:0 3px 8px rgba(0,0,0,.22);}
 .input-btns button.primary{background:linear-gradient(135deg,#5e7bff,#a35bff);}
 .input-btns button:active{transform:scale(.96);}
-.quick-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px;}
-.qk{padding:10px 0;text-align:center;border-radius:10px;font-size:13px;
+.quick-keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:8px;}
+.qk{padding:9px 0;text-align:center;border-radius:9px;font-size:13px;
   background:rgba(255,255,255,.07);color:#dfe4ff;}
 .qk:active{background:#5e7bff;}
 /* ===== 投屏面板 ===== */
-.cast-card{margin-top:14px;padding:16px;border-radius:18px;
+.cast-card{margin-top:10px;padding:14px;border-radius:16px;
   background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
-  box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1);}
-.cast-card label{display:block;font-size:12px;color:#c9d0ff;margin-bottom:6px;}
-.cast-card input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:none;font-size:15px;
-  background:rgba(255,255,255,.92);color:#222;outline:none;margin-bottom:10px;}
-.cast-card .row{display:flex;gap:8px;margin-top:4px;}
-.cast-card .row button{flex:1;padding:12px;border-radius:12px;border:none;color:#fff;font-size:14px;font-weight:500;
+  box-shadow:0 6px 18px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.1);}
+.cast-card label{display:block;font-size:12px;color:#c9d0ff;margin-bottom:5px;}
+.cast-card input[type=text], .cast-card select{width:100%;padding:9px 11px;border-radius:9px;border:none;font-size:14px;
+  background:rgba(255,255,255,.92);color:#222;outline:none;margin-bottom:8px;}
+.cast-card select{background:rgba(255,255,255,.1);color:#fff;}
+.cast-card option{background:#2a1f5c;color:#fff;}
+.cast-card .row{display:flex;gap:7px;margin-top:2px;}
+.cast-card .row button{flex:1;padding:10px;border-radius:10px;border:none;color:#fff;font-size:13px;font-weight:500;
   background:linear-gradient(135deg,#5e7bff,#a35bff);}
 .cast-card .row button.gray{background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.06));}
 .cast-card .row button:active{transform:scale(.97);}
-.tips{font-size:12px;color:#c9d0ff;line-height:1.7;margin-top:12px;opacity:.8;}
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);
-  color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;}
+/* ===== 应用列表 ===== */
+.app-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.app-item{padding:8px 4px;border-radius:12px;text-align:center;font-size:11px;
+  background:rgba(255,255,255,.06);overflow:hidden;}
+.app-item:active{background:rgba(94,123,255,.3);transform:scale(.96);}
+.app-item img{width:44px;height:44px;border-radius:10px;display:block;margin:0 auto 4px;}
+.app-item .name{line-height:1.2;height:28px;overflow:hidden;color:#e0e6ff;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.sys-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#c9d0ff;margin-top:8px;}
+.sys-toggle button{padding:6px 10px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;}
+/* ===== 文件管理 ===== */
+.path-bar{padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.08);font-size:12px;
+  color:#c9d0ff;word-break:break-all;margin-top:10px;}
+.file-list{margin-top:8px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.05);}
+.file-item{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;}
+.file-item:last-child{border-bottom:none;}
+.file-item:active{background:rgba(94,123,255,.2);}
+.file-item .ico{width:30px;font-size:18px;text-align:center;margin-right:10px;flex-shrink:0;}
+.file-item .meta{flex:1;min-width:0;}
+.file-item .nm{color:#e0e6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-item .sz{font-size:11px;color:#8e96c5;margin-top:2px;}
+.file-item .op{flex-shrink:0;display:flex;gap:6px;}
+.file-item .op button{padding:5px 9px;border-radius:7px;border:none;font-size:11px;color:#fff;
+  background:rgba(255,94,98,.7);}
+.file-item .op button.cast{background:linear-gradient(135deg,#5e7bff,#a35bff);}
+/* 通用 */
+.tips{font-size:12px;color:#c9d0ff;line-height:1.7;margin-top:10px;opacity:.8;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);
+  color:#fff;padding:9px 16px;border-radius:18px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;}
 .toast.show{opacity:1;}
-/* 底部 home 条预留 */
 .safe{height:env(safe-area-inset-bottom);}
-.brand{text-align:center;font-size:11px;opacity:.5;margin:10px 0 14px;letter-spacing:2px;}
+.brand{text-align:center;font-size:11px;opacity:.45;margin:14px 0 10px;letter-spacing:2px;}
+.empty{text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px;}
 </style>
 </head>
 <body>
@@ -108,7 +136,7 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
   <div class="topbar">
     <div class="title">📺 云视远程输入法 <span id="localVer" style="font-size:11px;opacity:.6;"></span></div>
     <div class="right">
-      <button class="update-btn" id="btnUpdate">🔔 检查更新</button>
+      <button class="update-btn" id="btnUpdate">🔔 更新</button>
       <div class="status"><span class="dot" id="dot"></span><span id="stxt">连接中…</span></div>
     </div>
   </div>
@@ -116,6 +144,8 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
   <div class="tabs">
     <div class="tab active" data-tab="remote">🎮 遥控</div>
     <div class="tab" data-tab="touch">👆 触摸</div>
+    <div class="tab" data-tab="app">📱 应用</div>
+    <div class="tab" data-tab="file">📂 文件</div>
     <div class="tab" data-tab="input">⌨️ 输入</div>
     <div class="tab" data-tab="cast">📺 投屏</div>
   </div>
@@ -133,7 +163,7 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
       </div>
     </div>
     <div style="display:flex;justify-content:center;">
-      <div class="func-row" style="max-width:360px;">
+      <div class="func-row">
         <div class="func-btn" data-key="KEYCODE_BACK">↩ 返回</div>
         <div class="func-btn" data-key="KEYCODE_HOME">🏠 主页</div>
         <div class="func-btn" data-key="KEYCODE_MENU">≡ 菜单</div>
@@ -146,7 +176,7 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
         <div class="func-btn" data-key="KEYCODE_VOLUME_DOWN">🔉 音量-</div>
       </div>
     </div>
-    <div class="brand">云视远程输入法 · 长按方向键可连发</div>
+    <div class="brand">云视远程输入法 · © 2026 孟云</div>
   </div>
 
   <!-- 触摸板 -->
@@ -163,7 +193,23 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
       <input type="range" id="sens" min="0.6" max="3" step="0.1" value="1.6">
       <span id="sensv">1.6</span>
     </div>
-    <div class="tips">提示：单指滑动移动光标；手指按下抬起=点击；双击屏幕=双击；右侧上下滑动=滚轮。</div>
+    <div class="tips">提示：单指滑动移动光标；轻点=点击；双击=双击；右侧 22% 区域上下滑动=滚轮。</div>
+  </div>
+
+  <!-- 应用列表 -->
+  <div class="panel" id="p-app">
+    <div class="sys-toggle">
+      <button id="btnSysToggle">显示系统应用</button>
+      <span style="font-size:11px;opacity:.7;">点击图标启动应用，长按可卸载</span>
+    </div>
+    <div class="app-grid" id="appGrid"><div class="empty" style="grid-column:1/-1;">加载中…</div></div>
+  </div>
+
+  <!-- 文件管理 -->
+  <div class="panel" id="p-file">
+    <div class="path-bar" id="pathBar">/</div>
+    <div class="file-list" id="fileList"><div class="empty" style="padding:40px 0;">加载中…</div></div>
+    <div class="tips">💡 点击文件夹进入；视频/音频文件可直接投屏播放；删除操作不可恢复，谨慎操作。</div>
   </div>
 
   <!-- 输入 -->
@@ -196,34 +242,28 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
       <label>标题（可选）</label>
       <input type="text" id="castTitle" placeholder="例如：测试视频"/>
       <div class="row">
-        <button id="btn-play">▶ 播放 (新内核)</button>
+        <button id="btn-play">▶ 播放</button>
         <button class="gray" id="btn-stop">⏹ 停止</button>
       </div>
     </div>
-    <div class="cast-card" style="margin-top:12px;">
-      <label>本地文件推送（上传后播放，请使用小文件测试）</label>
+    <div class="cast-card">
+      <label>本地文件上传</label>
       <input type="file" id="castFile" accept="video/*" style="color:#fff;font-size:13px;"/>
-      <div class="tips">✨ v1.0 内核升级到 ExoPlayer 2.19.1，流畅度、格式兼容性、缓冲策略全面提升，支持 HLS/DASH/RTSP。</div>
     </div>
-
-    <div class="cast-card" style="margin-top:12px;">
+    <div class="cast-card">
       <label>播放器内核</label>
-      <select id="playerEngine" style="width:100%;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:14px;">
+      <select id="playerEngine">
         <option value="exo">ExoPlayer（推荐 · 硬解 · 省资源）</option>
-        <option value="ijk">IJKPlayer（软解兜底 · 仅 32 位包可用）</option>
+        <option value="ijk">IJKPlayer（软解兜底 · 仅 32 位包）</option>
       </select>
-      <div class="tips" style="margin-top:8px;">💡 遇到黑屏 / 花屏 / 格式不支持时，可切换到 IJKPlayer 重试；arm64-v8a 安装包不含 IJK 内核。</div>
-    </div>
-
-    <div class="cast-card" style="margin-top:12px;">
-      <label>播放器 User-Agent（部分视频源会校验 UA，留空则使用默认值）</label>
+      <label style="margin-top:8px;">播放器 User-Agent</label>
       <input type="text" id="playerUA" placeholder="默认：TVRemoteIME/1.0"/>
       <div class="row">
-        <button id="btn-save-ua" style="background:linear-gradient(135deg,#4f6dff,#7c5cff);">💾 保存设置</button>
+        <button id="btn-save-ua">💾 保存设置</button>
         <button class="gray" id="btn-reset-ua">↺ 恢复默认</button>
       </div>
-      <div class="tips" style="margin-top:8px;">💡 修改后立即生效，投屏播放器发起 HTTP 请求时使用。</div>
     </div>
+    <div class="tips">✨ ExoPlayer 2.19.1，支持 HLS/DASH/RTSP 等主流格式。遇到无法播放的流可切换 IJKPlayer 软解。</div>
   </div>
 </div>
 
@@ -233,311 +273,300 @@ textarea#txt{width:100%;min-height:90px;border-radius:14px;border:none;padding:1
   const $ = s=>document.querySelector(s);
   const $$ = s=>document.querySelectorAll(s);
 
-  // ===== Tab 切换 =====
+  // ===== Tab =====
+  // 清理触摸板残留状态：移除激活样式、复位按压标志、隐藏电视端光标浮层，
+  // 避免切换到其它功能区后仍残留「圆圈」等视觉元素
+  function resetTouchState(){
+    try{
+      const tpEl=$('#touchpad');
+      if(tpEl) tpEl.classList.remove('active');
+      try{ touching=false; }catch(e){}
+      send({type:'touch',action:'hide'});
+    }catch(e){}
+  }
   $$('.tab').forEach(t=>{
     t.addEventListener('click',()=>{
+      resetTouchState();
       $$('.tab').forEach(x=>x.classList.remove('active'));
       $$('.panel').forEach(x=>x.classList.remove('active'));
       t.classList.add('active');
       $('#p-'+t.dataset.tab).classList.add('active');
+      if(t.dataset.tab==='app') loadApps(showSysApp);
+      if(t.dataset.tab==='file' && !fileLoaded) loadFiles('/');
     });
   });
+  // 页面切到后台时同样隐藏光标，避免残留
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) resetTouchState(); });
 
   // ===== Toast =====
-  const toastEl = $('#toast');
-  let toastTimer=null;
-  function toast(msg){
-    toastEl.textContent=msg;toastEl.classList.add('show');
-    clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600);
-  }
+  const toastEl=$('#toast');let toastTimer=null;
+  function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600);}
   function vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms||12);}
 
   // ===== WebSocket =====
-  let ws=null, retry=0, connected=false;
-  const dot=$('#dot'), stxt=$('#stxt');
+  let ws=null,retry=0,connected=false;
+  const dot=$('#dot'),stxt=$('#stxt');
   function setStatus(ok,msg){dot.classList.toggle('ok',!!ok);stxt.textContent=msg;}
-
   function connect(){
-    const proto = location.protocol==='https:'?'wss':'ws';
-    const url = proto+'://'+location.host+'/ws';
-    try{ ws = new WebSocket(url); }catch(e){ retryLater(); return; }
-    ws.onopen = ()=>{ connected=true; retry=0; setStatus(true,'已连接'); };
-    ws.onclose= ()=>{ connected=false; setStatus(false,'已断开，重连中…'); retryLater(); };
-    ws.onerror= ()=>{ try{ws.close();}catch(e){} };
-    ws.onmessage = (ev)=>{
-      try{
-        const m = JSON.parse(ev.data);
-        if(m.type==='ack' && m.ok===false){ toast('操作失败，可能无注入权限'); }
-      }catch(e){}
-    };
+    const proto=location.protocol==='https:'?'wss':'ws';
+    try{ws=new WebSocket(proto+'://'+location.host+'/ws');}catch(e){retryLater();return;}
+    ws.onopen=()=>{connected=true;retry=0;setStatus(true,'已连接');};
+    ws.onclose=()=>{connected=false;setStatus(false,'已断开');retryLater();};
+    ws.onerror=()=>{try{ws.close();}catch(e){}};
+    ws.onmessage=()=>{};
   }
-  function retryLater(){ retry++; setTimeout(connect, Math.min(1000*Math.pow(1.5,Math.min(retry,6)),10000)); }
+  function retryLater(){retry++;setTimeout(connect,Math.min(1000*Math.pow(1.5,Math.min(retry,6)),10000));}
   connect();
 
   function send(o){
-    if(!connected || ws.readyState!==1){
-      // 退回 HTTP POST
-      httpPost(o);
-      return;
-    }
-    try{ ws.send(JSON.stringify(o)); }catch(e){ httpPost(o); }
-  }
-  function httpPost(o){
-    const body = new URLSearchParams();
-    if(o.type==='key'||o.type==='keydown'||o.type==='keyup'){
-      body.set('code',o.code); fetch('/'+o.type,{method:'POST',body});
-    } else if(o.type==='text'){
-      body.set('text',o.text); fetch('/text',{method:'POST',body});
-    } else if(o.type==='touch'){
-      body.set('action',o.action||'move');
-      if(o.dx!=null) body.set('dx',o.dx);
-      if(o.dy!=null) body.set('dy',o.dy);
-      const sens = $('#sens').value; body.set('sens',sens);
-      fetch('/touch',{method:'POST',body});
+    if(connected&&ws.readyState===1){try{ws.send(JSON.stringify(o));return;}catch(e){}}
+    // 回退 HTTP
+    const b=new URLSearchParams();
+    if(o.type==='key'||o.type==='keydown'||o.type==='keyup'){b.set('code',o.code);fetch('/'+o.type,{method:'POST',body:b});}
+    else if(o.type==='text'){b.set('text',o.text);fetch('/text',{method:'POST',body:b});}
+    else if(o.type==='touch'){
+      b.set('action',o.action||'move');
+      if(o.dx!=null)b.set('dx',o.dx);if(o.dy!=null)b.set('dy',o.dy);
+      b.set('sens',$('#sens').value);fetch('/touch',{method:'POST',body:b});
     }
   }
+  function pressKey(code){send({type:'key',code});vibrate();}
 
-  function pressKey(code){ send({type:'key',code}); vibrate(); }
-
-  // ===== 遥控方向键 & 功能键 =====
+  // ===== 按键 =====
   $$('[data-key]').forEach(el=>{
-    let repeatTimer=null, repeatInterval=null;
-    const code = el.dataset.key;
-    const start=e=>{
-      e.preventDefault();
-      send({type:'keydown',code});
-      vibrate(8);
-      el.style.transform='scale(.92)';
-      repeatTimer=setTimeout(()=>{
-        repeatInterval=setInterval(()=>send({type:'key',code}),90);
-      },400);
-    };
-    const end=e=>{
-      e&&e.preventDefault();
-      clearTimeout(repeatTimer);clearInterval(repeatInterval);
-      send({type:'keyup',code});
-      // 如果没到长按阈值，发送一次点击
-      el.style.transform='';
-    };
-    el.addEventListener('touchstart',start,{passive:false});
-    el.addEventListener('touchend',end);
-    el.addEventListener('touchcancel',end);
-    el.addEventListener('mousedown',start);
-    el.addEventListener('mouseup',end);
-    el.addEventListener('mouseleave',end);
+    let rt=null,ri=null;const code=el.dataset.key;
+    const start=e=>{e.preventDefault();send({type:'keydown',code});vibrate(8);
+      el.style.transform='scale(.92)';rt=setTimeout(()=>{ri=setInterval(()=>send({type:'key',code}),90);},400);};
+    const end=e=>{e&&e.preventDefault();clearTimeout(rt);clearInterval(ri);send({type:'keyup',code});el.style.transform='';};
+    el.addEventListener('touchstart',start,{passive:false});el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);
+    el.addEventListener('mousedown',start);el.addEventListener('mouseup',end);el.addEventListener('mouseleave',end);
   });
 
   // ===== 触摸板 =====
-  const tp = $('#touchpad');
-  let lastX=0,lastY=0,touching=false,startX=0,startY=0,startT=0,moved=false,tapCount=0,lastTapTime=0;
-  function handleStart(x,y){
-    lastX=x;lastY=y;startX=x;startY=y;startT=Date.now();touching=true;moved=false;
-    tp.classList.add('active');
-    send({type:'touch',action:'down',dx:0,dy:0});
-  }
-  function handleMove(x,y){
-    if(!touching)return;
-    const dx=x-lastX, dy=y-lastY;
-    lastX=x;lastY=y;
-    if(Math.abs(dx)+Math.abs(dy)>3) moved=true;
-    // 右侧 1/4 区域上下滑=滚轮
+  const tp=$('#touchpad');let lastX=0,lastY=0,touching=false,startX=0,startY=0,startT=0,moved=false,lastTapTime=0;
+  function handleStart(x,y){lastX=x;lastY=y;startX=x;startY=y;startT=Date.now();touching=true;moved=false;tp.classList.add('active');send({type:'touch',action:'down',dx:0,dy:0});}
+  function handleMove(x,y){if(!touching)return;const dx=x-lastX,dy=y-lastY;lastX=x;lastY=y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
     const rect=tp.getBoundingClientRect();
-    if(x > rect.right - rect.width*0.22){
-      if(Math.abs(dy)>2) send({type:'touch',action:'scroll',dx:0,dy:dy});
-    } else {
-      send({type:'touch',action:'move',dx:dx,dy:dy});
-    }
-  }
-  function handleEnd(){
-    if(!touching)return;touching=false;
-    tp.classList.remove('active');
-    const dt=Date.now()-startT;
-    const dist=Math.hypot(lastX-startX,lastY-startY);
-    send({type:'touch',action:'up',dx:0,dy:0});
-    // 轻点
-    if(!moved && dt<280 && dist<8){
+    if(x>rect.right-rect.width*.22){if(Math.abs(dy)>2)send({type:'touch',action:'scroll',dx:0,dy:dy});}
+    else send({type:'touch',action:'move',dx:dx,dy:dy});}
+  function handleEnd(){if(!touching)return;touching=false;tp.classList.remove('active');
+    const dt=Date.now()-startT,dist=Math.hypot(lastX-startX,lastY-startY);send({type:'touch',action:'up',dx:0,dy:0});
+    if(!moved&&dt<280&&dist<8){
       const now=Date.now();
-      if(now-lastTapTime<320){
-        send({type:'touch',action:'click'});
-        send({type:'touch',action:'click'});
-        tapCount=0;lastTapTime=0;
-      } else {
-        tapCount=1;lastTapTime=now;
-        setTimeout(()=>{ if(tapCount===1){ send({type:'touch',action:'click'}); tapCount=0; } },300);
-      }
+      if(now-lastTapTime<320){send({type:'touch',action:'click'});send({type:'touch',action:'click'});lastTapTime=0;}
+      else{lastTapTime=now;setTimeout(()=>{if(now-lastTapTime>=300-1){send({type:'touch',action:'click'});}},300);}
       vibrate(10);
-    } else if(!moved && dt>550 && dist<8){
-      send({type:'touch',action:'longclick'});
-      vibrate(30);
-    }
-  }
-  tp.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];handleStart(t.clientX,t.clientY);},{passive:false});
-  tp.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];handleMove(t.clientX,t.clientY);},{passive:false});
+    }else if(!moved&&dt>550&&dist<8){send({type:'touch',action:'longclick'});vibrate(30);}}
+  tp.addEventListener('touchstart',e=>{e.preventDefault();handleStart(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+  tp.addEventListener('touchmove',e=>{e.preventDefault();handleMove(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
   tp.addEventListener('touchend',e=>{e.preventDefault();handleEnd();},{passive:false});
-  tp.addEventListener('touchcancel',e=>{handleEnd();},{passive:false});
-  tp.addEventListener('mousedown',e=>{handleStart(e.clientX,e.clientY);});
+  tp.addEventListener('touchcancel',handleEnd,{passive:false});
+  tp.addEventListener('mousedown',e=>handleStart(e.clientX,e.clientY));
   window.addEventListener('mousemove',e=>{if(touching)handleMove(e.clientX,e.clientY);});
   window.addEventListener('mouseup',()=>{if(touching)handleEnd();});
-
   $('#t-click').addEventListener('click',()=>{send({type:'touch',action:'click'});vibrate();});
   $('#t-long').addEventListener('click',()=>{send({type:'touch',action:'longclick'});vibrate(20);});
   $('#t-back').addEventListener('click',()=>pressKey('KEYCODE_BACK'));
   $('#t-home').addEventListener('click',()=>{send({type:'touch',action:'home'});toast('光标已归位');});
-
   const sens=$('#sens'),sensv=$('#sensv');
   sens.addEventListener('input',()=>{sensv.textContent=sens.value;localStorage.setItem('tv_sens',sens.value);});
   const savedSens=localStorage.getItem('tv_sens');
   if(savedSens){sens.value=savedSens;sensv.textContent=savedSens;}
 
   // ===== 输入面板 =====
-  $('#btn-send').addEventListener('click',()=>{
-    const t=$('#txt').value;
-    if(t){ send({type:'text',text:t}); toast('已发送'); vibrate(); }
-  });
-  $('#btn-del').addEventListener('click',()=>{pressKey('KEYCODE_DEL');});
-  $('#btn-enter').addEventListener('click',()=>{pressKey('KEYCODE_ENTER');});
-  $('#btn-cls').addEventListener('click',()=>{
-    $('#txt').value='';
-    fetch('/key?code=cls',{method:'POST',body:new URLSearchParams('code=cls')}).catch(()=>{});
-    // 兼容：走 /key?code=cls
-    const b=new URLSearchParams();b.set('code','cls');fetch('/key',{method:'POST',body:b});
-    toast('已清空输入框');
-  });
+  $('#btn-send').addEventListener('click',()=>{const t=$('#txt').value;if(t){send({type:'text',text:t});toast('已发送');vibrate();}});
+  $('#btn-del').addEventListener('click',()=>pressKey('KEYCODE_DEL'));
+  $('#btn-enter').addEventListener('click',()=>pressKey('KEYCODE_ENTER'));
+  $('#btn-cls').addEventListener('click',()=>{$('#txt').value='';const b=new URLSearchParams();b.set('code','cls');fetch('/key',{method:'POST',body:b});toast('已清空');});
   $$('.qk').forEach(q=>q.addEventListener('click',()=>pressKey(q.dataset.k)));
 
-  // ===== PC 键盘支持 =====
+  // ===== PC 键盘 =====
   window.addEventListener('keydown',e=>{
-    // 如果用户在输入框里打字，就不拦截
-    if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')) return;
-    let code=null;
+    if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='SELECT'))return;
+    let c=null;
     switch(e.key){
-      case 'ArrowUp':code='KEYCODE_DPAD_UP';break;
-      case 'ArrowDown':code='KEYCODE_DPAD_DOWN';break;
-      case 'ArrowLeft':code='KEYCODE_DPAD_LEFT';break;
-      case 'ArrowRight':code='KEYCODE_DPAD_RIGHT';break;
-      case 'Enter':code='KEYCODE_DPAD_CENTER';break;
-      case 'Backspace':code='KEYCODE_DEL';break;
-      case 'Escape':code='KEYCODE_BACK';break;
-      case 'Home':code='KEYCODE_HOME';break;
-      case ' ':code='KEYCODE_MEDIA_PLAY_PAUSE';e.preventDefault();break;
+      case'ArrowUp':c='KEYCODE_DPAD_UP';break;case'ArrowDown':c='KEYCODE_DPAD_DOWN';break;
+      case'ArrowLeft':c='KEYCODE_DPAD_LEFT';break;case'ArrowRight':c='KEYCODE_DPAD_RIGHT';break;
+      case'Enter':c='KEYCODE_DPAD_CENTER';break;case'Backspace':c='KEYCODE_DEL';break;
+      case'Escape':c='KEYCODE_BACK';break;case'Home':c='KEYCODE_HOME';break;
+      case' ':c='KEYCODE_MEDIA_PLAY_PAUSE';e.preventDefault();break;
     }
-    if(code){ e.preventDefault(); if(!e.repeat) send({type:'keydown',code}); else send({type:'key',code}); }
+    if(c){e.preventDefault();send({type:e.repeat?'key':'keydown',code:c});}
   });
   window.addEventListener('keyup',e=>{
-    if(document.activeElement && (document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA')) return;
-    let code=null;
+    if(document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='SELECT'))return;
+    let c=null;
     switch(e.key){
-      case 'ArrowUp':code='KEYCODE_DPAD_UP';break;
-      case 'ArrowDown':code='KEYCODE_DPAD_DOWN';break;
-      case 'ArrowLeft':code='KEYCODE_DPAD_LEFT';break;
-      case 'ArrowRight':code='KEYCODE_DPAD_RIGHT';break;
-      case 'Enter':code='KEYCODE_DPAD_CENTER';break;
-      case 'Backspace':code='KEYCODE_DEL';break;
-      case 'Escape':code='KEYCODE_BACK';break;
-      case 'Home':code='KEYCODE_HOME';break;
-      case ' ':code='KEYCODE_MEDIA_PLAY_PAUSE';break;
+      case'ArrowUp':c='KEYCODE_DPAD_UP';break;case'ArrowDown':c='KEYCODE_DPAD_DOWN';break;
+      case'ArrowLeft':c='KEYCODE_DPAD_LEFT';break;case'ArrowRight':c='KEYCODE_DPAD_RIGHT';break;
+      case'Enter':c='KEYCODE_DPAD_CENTER';break;case'Backspace':c='KEYCODE_DEL';break;
+      case'Escape':c='KEYCODE_BACK';break;case'Home':c='KEYCODE_HOME';break;
+      case' ':c='KEYCODE_MEDIA_PLAY_PAUSE';break;
     }
-    if(code){ send({type:'keyup',code}); }
+    if(c)send({type:'keyup',code:c});
   });
+
+  // ===== 应用列表 =====
+  let showSysApp=false,appLoaded=false;
+  function loadApps(showSys){
+    const grid=$('#appGrid');grid.innerHTML='<div class="empty" style="grid-column:1/-1;">加载中…</div>';
+    const b=new URLSearchParams();b.set('system',showSys?'true':'false');
+    fetch('/apps',{method:'POST',body:b})
+      .then(r=>r.json()).then(data=>{
+        // 后端直接返回数组，或者 {apps:[]} 两种格式都兼容
+        const list = Array.isArray(data)?data:(data.apps||[]);
+        if(!list.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1;">没有应用</div>';return;}
+        grid.innerHTML='';
+        list.forEach(app=>{
+          const it=document.createElement('div');it.className='app-item';
+          const label = (app.lable||app.name||app.packageName||'').toString();
+          it.innerHTML=`<img src="/appicon/${encodeURIComponent(app.packageName)}" alt="icon" onerror="this.style.display='none'"/><div class="name">${label.replace(/</g,'&lt;')}</div>`;
+          let pressTimer=null;
+          it.addEventListener('click',()=>{
+            if(pressTimer)clearTimeout(pressTimer);
+            if(it.dataset.pressed){delete it.dataset.pressed;return;}
+            const bb=new URLSearchParams();bb.set('packageName',app.packageName);
+            fetch('/run',{method:'POST',body:bb}).then(()=>toast('启动：'+label)).catch(()=>toast('启动失败'));
+            vibrate();
+          });
+          const start=e=>{e.preventDefault();it.dataset.pressed='1';pressTimer=setTimeout(()=>{
+            if(confirm('卸载应用：'+label+' ?')){
+              const bb=new URLSearchParams();bb.set('packageName',app.packageName);
+              fetch('/uninstall',{method:'POST',body:bb}).then(()=>{toast('已发送卸载请求');setTimeout(()=>loadApps(showSys),800);});
+            }
+            delete it.dataset.pressed;
+          },600);};
+          const end=()=>{if(pressTimer)clearTimeout(pressTimer);setTimeout(()=>{delete it.dataset.pressed;},50);};
+          it.addEventListener('touchstart',start,{passive:false});it.addEventListener('touchend',end);it.addEventListener('touchcancel',end);
+          it.addEventListener('mousedown',start);it.addEventListener('mouseup',end);it.addEventListener('mouseleave',end);
+          grid.appendChild(it);
+        });
+        appLoaded=true;
+      }).catch(()=>{grid.innerHTML='<div class="empty" style="grid-column:1/-1;">加载失败</div>';});
+  }
+  $('#btnSysToggle').addEventListener('click',()=>{showSysApp=!showSysApp;$('#btnSysToggle').textContent=showSysApp?'隐藏系统应用':'显示系统应用';loadApps(showSysApp);vibrate();});
+
+  // ===== 文件管理 =====
+  let fileLoaded=false,curPath='/';
+  function fmtSize(s){if(s<1024)return s+' B';if(s<1024*1024)return(s/1024).toFixed(1)+' KB';if(s<1024*1024*1024)return(s/1048576).toFixed(1)+' MB';return(s/1073741824).toFixed(2)+' GB';}
+  function loadFiles(p){
+    curPath=p||'/';
+    const list=$('#fileList'),bar=$('#pathBar');
+    bar.textContent=curPath==='/'?'/ 存储根目录':curPath;
+    list.innerHTML='<div class="empty" style="padding:40px 0;">加载中…</div>';
+    fetch('/file/dir/'+encodeURIComponent(curPath==='/'?'':curPath)).then(r=>r.json()).then(data=>{
+      list.innerHTML='';
+      if(curPath!=='/'){
+        const back=document.createElement('div');back.className='file-item';
+        back.innerHTML=`<div class="ico">⬆️</div><div class="meta"><div class="nm">.. 返回上级</div></div>`;
+        back.addEventListener('click',()=>{loadFiles(data.parent||'/');vibrate();});
+        list.appendChild(back);
+      }
+      (data.dirs||[]).forEach(d=>{
+        const it=document.createElement('div');it.className='file-item';
+        it.innerHTML=`<div class="ico">📁</div><div class="meta"><div class="nm">${d.name.replace(/</g,'&lt;')}</div><div class="sz">文件夹</div></div>`;
+        it.addEventListener('click',()=>{loadFiles(d.path==='/'?'':d.path);vibrate();});
+        list.appendChild(it);
+      });
+      (data.files||[]).forEach(f=>{
+        const it=document.createElement('div');it.className='file-item';
+        const isMedia=!!f.isMedia;
+        it.innerHTML=`<div class="ico">${isMedia?'🎬':'📄'}</div><div class="meta"><div class="nm">${f.name.replace(/</g,'&lt;')}</div><div class="sz">${fmtSize(f.size||0)}</div></div>
+          <div class="op"><button class="del">删除</button>${isMedia?'<button class="cast">播放</button>':''}</div>`;
+        it.querySelector('.del').addEventListener('click',e=>{e.stopPropagation();
+          if(confirm('删除文件：'+f.name+'？此操作不可恢复！')){
+            const b=new URLSearchParams();b.set('paths',f.fullPath);
+            fetch('/file/delete',{method:'POST',body:b}).then(()=>{toast('已删除');loadFiles(curPath);}).catch(()=>toast('删除失败'));
+          }
+        });
+        const castBtn=it.querySelector('.cast');
+        if(castBtn)castBtn.addEventListener('click',e=>{e.stopPropagation();
+          const dlPath = '/file/download'+f.fullPath.replace(/^\/+/,'/').replace(/([^/])/,'/$1');
+          const url=location.origin+dlPath;
+          const bb=new URLSearchParams();bb.set('playUrl',url);bb.set('title',f.name);
+          fetch('/play',{method:'POST',body:bb}).then(()=>{toast('开始投屏');}).catch(()=>toast('播放失败'));vibrate();
+        });
+        list.appendChild(it);
+      });
+      if(!(data.dirs||[]).length&&!(data.files||[]).length&&curPath==='/'){
+        list.innerHTML='<div class="empty" style="padding:40px 0;">未获取到存储权限或存储为空</div>';
+      }
+      fileLoaded=true;
+    }).catch(()=>{list.innerHTML='<div class="empty" style="padding:40px 0;">加载失败</div>';});
+  }
 
   // ===== 投屏 =====
   $('#btn-play').addEventListener('click',()=>{
-    const u=$('#castUrl').value.trim();
-    if(!u){toast('请输入视频地址');return;}
+    const u=$('#castUrl').value.trim();if(!u){toast('请输入视频地址');return;}
     const t=$('#castTitle').value.trim()||'投屏播放';
     const b=new URLSearchParams();b.set('playUrl',u);b.set('title',t);
-    fetch('/play',{method:'POST',body:b}).then(r=>r.text()).then(()=>toast('已发起播放')).catch(()=>toast('请求失败'));
-    vibrate();
+    fetch('/play',{method:'POST',body:b}).then(()=>toast('已发起播放')).catch(()=>toast('请求失败'));vibrate();
   });
-  $('#btn-stop').addEventListener('click',()=>{
-    fetch('/playStop',{method:'POST'}).then(()=>toast('已停止'));
-    vibrate();
-  });
+  $('#btn-stop').addEventListener('click',()=>{fetch('/playStop',{method:'POST'}).then(()=>toast('已停止'));vibrate();});
   $('#castFile').addEventListener('change',e=>{
-    const f=e.target.files[0];if(!f)return;
-    const fd=new FormData();fd.append('file',f);
+    const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);fd.append('path','/'+f.name);
     toast('上传中：'+f.name);
-    fetch('/upload',{method:'POST',body:fd}).then(r=>r.text()).then(txt=>{
+    fetch('/file/upload',{method:'POST',body:fd}).then(r=>r.text()).then(txt=>{
       const m=txt.match(/(https?:\/\/[^\s"']+|\/file\/[^\s"']+)/);
-      if(m){
-        const url = m[1].startsWith('http')?m[1]:location.origin+m[1];
-        $('#castUrl').value=url;
-        toast('上传成功，准备播放');
-      } else toast('上传完成');
+      if(m){const url=m[1].startsWith('http')?m[1]:location.origin+m[1];$('#castUrl').value=url;toast('上传成功');}
+      else toast('上传完成');
     }).catch(()=>toast('上传失败'));
   });
 
-  // ===== 版本检查（前端），每个新版本只提示一次（localStorage） =====
-  const DISMISS_KEY = 'cloudhs_dismissed_update_code';
+  // ===== 版本检查 =====
+  const DISMISS_KEY='cloudhs_dismissed_update_code';
   function showUpdateDialog(info){
-    const mask = document.createElement('div');
+    const mask=document.createElement('div');
     mask.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;';
-    mask.innerHTML = `
-      <div style="max-width:360px;width:100%;background:linear-gradient(160deg,#2a2060,#4a2a8f);border-radius:18px;padding:22px;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,.5);">
-        <div style="font-size:18px;font-weight:600;margin-bottom:10px;">🎉 发现新版本 v${info.versionName||''}</div>
-        <div style="font-size:13px;line-height:1.7;color:#d7daff;white-space:pre-wrap;">${(info.message||'').replace(/</g,'&lt;')}</div>
-        <div style="display:flex;gap:10px;margin-top:18px;">
-          ${info.forced?'':`<button data-act="later" style="flex:1;padding:11px 0;border-radius:12px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:14px;">本次忽略</button>`}
-          <button data-act="update" style="flex:1;padding:11px 0;border-radius:12px;border:none;background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;font-size:14px;font-weight:600;">立即更新</button>
-        </div>
-      </div>`;
+    mask.innerHTML=`<div style="max-width:360px;width:100%;background:linear-gradient(160deg,#2a2060,#4a2a8f);border-radius:18px;padding:20px;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+      <div style="font-size:17px;font-weight:600;margin-bottom:8px;">🎉 发现新版本 v${info.versionName||''}</div>
+      <div style="font-size:13px;line-height:1.7;color:#d7daff;white-space:pre-wrap;">${(info.message||'').replace(/</g,'&lt;')}</div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        ${info.forced?'':`<button data-act="later" style="flex:1;padding:10px 0;border-radius:11px;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:14px;">本次忽略</button>`}
+        <button data-act="update" style="flex:1;padding:10px 0;border-radius:11px;border:none;background:linear-gradient(135deg,#5e7bff,#a35bff);color:#fff;font-size:14px;font-weight:600;">立即更新</button>
+      </div></div>`;
     document.body.appendChild(mask);
-    mask.addEventListener('click', e=>{
-      const act = e.target.dataset && e.target.dataset.act;
-      if(act==='later'){ localStorage.setItem(DISMISS_KEY, info.versionCode); mask.remove(); }
-      else if(act==='update'){
-        if(info.updateUrl) window.open(info.updateUrl,'_blank');
-        localStorage.setItem(DISMISS_KEY, info.versionCode);
-        mask.remove();
-      }
+    mask.addEventListener('click',e=>{
+      const a=e.target.dataset&&e.target.dataset.act;
+      if(a==='later'){localStorage.setItem(DISMISS_KEY,info.versionCode);mask.remove();}
+      else if(a==='update'){if(info.updateUrl)window.open(info.updateUrl,'_blank');localStorage.setItem(DISMISS_KEY,info.versionCode);mask.remove();}
     });
   }
   function checkUpdate(manual){
     fetch('/api/version').then(r=>r.json()).then(info=>{
       $('#localVer').textContent='v'+(info.localVersionName||'');
-      const btn=$('#btnUpdate');
-      btn.classList.remove('has');
-      btn.textContent='🔔 检查更新';
+      const btn=$('#btnUpdate');btn.classList.remove('has');btn.textContent='🔔 更新';
       if(info.hasUpdate){
-        const dismissed = parseInt(localStorage.getItem(DISMISS_KEY)||'0',10);
-        if(manual || info.forced || info.versionCode > dismissed){
-          showUpdateDialog(info);
-          btn.classList.add('has');
-          btn.textContent='🔔 有新版本';
-        }
-      } else if(manual){
-        toast('当前已是最新版本 v'+info.localVersionName);
-      }
-    }).catch(()=>{ if(manual) toast('检查更新失败'); });
+        const dismissed=parseInt(localStorage.getItem(DISMISS_KEY)||'0',10);
+        if(manual||info.forced||info.versionCode>dismissed){showUpdateDialog(info);btn.classList.add('has');btn.textContent='🔔 新版本';}
+      }else if(manual)toast('已是最新 v'+info.localVersionName);
+    }).catch(()=>{if(manual)toast('检查失败');});
   }
-  $('#btnUpdate').addEventListener('click',()=>{ checkUpdate(true); vibrate(); });
-  setTimeout(()=>checkUpdate(false), 1500);
+  $('#btnUpdate').addEventListener('click',()=>{checkUpdate(true);vibrate();});
+  setTimeout(()=>checkUpdate(false),1500);
 
-  // ===== 播放器 UA 设置 =====
+  // ===== 配置：UA / 内核 =====
   function loadConfig(){
     fetch('/api/config').then(r=>r.json()).then(cfg=>{
-      $('#playerUA').value = cfg.playerUserAgent || cfg.defaultPlayerUserAgent || '';
-      $('#playerUA').placeholder = '默认：' + (cfg.defaultPlayerUserAgent || 'TVRemoteIME/1.0');
-      $('#playerEngine').value = cfg.playerEngine || 'exo';
+      $('#playerUA').value=cfg.playerUserAgent||'';
+      $('#playerUA').placeholder='默认：'+(cfg.defaultPlayerUserAgent||'TVRemoteIME/1.0');
+      $('#playerEngine').value=cfg.playerEngine||'exo';
     }).catch(()=>{});
   }
   $('#btn-save-ua').addEventListener('click',()=>{
-    const ua=$('#playerUA').value.trim();
-    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:ua})})
-      .then(r=>r.json()).then(()=>{toast('UA 已保存，下次投屏生效');vibrate();}).catch(()=>toast('保存失败'));
+    const ua=$('#playerUA').value.trim(),engine=$('#playerEngine').value;
+    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:ua,playerEngine:engine})})
+      .then(r=>r.json()).then(()=>{
+        toast(engine==='ijk'?'已切换为 IJKPlayer 内核':'已切换为 ExoPlayer 内核');
+        loadConfig();
+        vibrate();
+      }).catch(()=>toast('保存失败'));
   });
   $('#btn-reset-ua').addEventListener('click',()=>{
-    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:''})})
-      .then(r=>r.json()).then(()=>{toast('已恢复默认 UA');loadConfig();vibrate();}).catch(()=>toast('重置失败'));
+    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:'',playerEngine:'exo'})})
+      .then(r=>r.json()).then(()=>{toast('已恢复默认');loadConfig();vibrate();}).catch(()=>toast('失败'));
   });
-
-  // ===== 播放器内核切换 =====
-  $('#playerEngine').addEventListener('change',()=>{
-    const engine=$('#playerEngine').value;
-    fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerEngine:engine})})
-      .then(r=>r.json()).then(()=>{toast('已切换内核：'+(engine==='ijk'?'IJKPlayer':'ExoPlayer'));vibrate();}).catch(()=>toast('切换失败'));
-  });
-
+  $('#playerEngine').addEventListener('change',()=>$('#btn-save-ua').click());
   loadConfig();
 })();
 </script>

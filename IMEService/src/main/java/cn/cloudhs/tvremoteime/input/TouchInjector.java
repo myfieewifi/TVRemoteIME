@@ -45,11 +45,18 @@ public class TouchInjector {
     private long mLastTapTime = 0;
     private float mLastTapX = 0f, mLastTapY = 0f;
 
+    // 屏幕光标浮层：注入事件不会触发系统鼠标指针，需自行绘制
+    private CursorOverlay mCursor;
+
     public TouchInjector(Context context) {
         init(context);
     }
 
     private void init(Context context) {
+        try {
+            mCursor = new CursorOverlay(context);
+        } catch (Throwable ignore) {
+        }
         try {
             Class<?> imClass = Class.forName("android.hardware.input.InputManager");
             Method getInstance = imClass.getMethod("getInstance");
@@ -165,6 +172,7 @@ public class TouchInjector {
     private void resetPos() {
         mCurX = mScreenW / 2f;
         mCurY = mScreenH / 2f;
+        updateCursor();
     }
 
     private void clamp() {
@@ -172,6 +180,25 @@ public class TouchInjector {
         if (mCurY < 0) mCurY = 0;
         if (mScreenW > 0 && mCurX > mScreenW - 1) mCurX = mScreenW - 1;
         if (mScreenH > 0 && mCurY > mScreenH - 1) mCurY = mScreenH - 1;
+        updateCursor();
+    }
+
+    /** 同步自绘光标到当前指针位置；未授予悬浮窗权限时静默跳过 */
+    private void updateCursor() {
+        if (mCursor == null) return;
+        try {
+            mCursor.move(mCurX, mCurY);
+        } catch (Throwable ignore) {
+        }
+    }
+
+    /** 隐藏光标浮层（离开触摸板时调用） */
+    public void hideCursor() {
+        if (mCursor == null) return;
+        try {
+            mCursor.hide();
+        } catch (Throwable ignore) {
+        }
     }
 
     private void injectClick(float x, float y) {

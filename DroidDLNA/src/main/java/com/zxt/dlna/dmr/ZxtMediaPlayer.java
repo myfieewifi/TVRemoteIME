@@ -25,6 +25,7 @@ import com.zxt.dlna.dmp.IJKPlayer;
 import com.zxt.dlna.util.Action;
 
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
@@ -146,14 +147,22 @@ public class ZxtMediaPlayer {
 
         transportStateChanged(TransportState.STOPPED);
         
+        IJKPlayer.ensureReceiverRegistered(mContext);
         IJKPlayer.setMediaListener(new GstMediaListener());
         
         Intent intent = new Intent();
-        intent.setClass(mContext, RenderPlayerService.class);
+        // 用字符串形式的显式组件名启动主模块中的播放桥接服务，
+        // 避免 DroidDLNA 模块反向依赖 IMEService 模块造成循环依赖
+        intent.setComponent(new ComponentName(mContext.getPackageName(),
+                "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
         intent.putExtra("type", type);
         intent.putExtra("name", name);
         intent.putExtra("playURI", uri.toString());
-        mContext.startService(intent);
+        try {
+            mContext.startService(intent);
+        } catch (Throwable t) {
+            Log.e(TAG, "启动 DLNA 播放桥接服务失败", t);
+        }
     }
 
 //    @Override

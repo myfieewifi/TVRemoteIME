@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
@@ -43,7 +44,20 @@
                 android:resource="@xml/methods" />
         </service>
 
-        <service android:name="com.zxt.dlna.dmr.RenderPlayerService" android:exported="false"/>
+        <!-- DLNA 渲染器服务（DMR）：向局域网注册 UPnP 设备，供手机视频 APP 搜索并投屏 -->
+        <service
+            android:name=".upnp.DLNARendererService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="dlna cast renderer"/>
+        </service>
+
+        <!-- DLNA 播放桥接服务：DroidDLNA 收到 SetAVTransportURI 后启动它拉起播放器 -->
+        <service
+            android:name=".player.DlnaPlayBridgeService"
+            android:exported="false"/>
+
         <service android:name="org.fourthline.cling.android.AndroidUpnpServiceImpl" android:exported="false"/>
 
         <activity android:name=".MainActivity" android:exported="true">
@@ -92,15 +106,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name="com.zxt.dlna.dmp.IJKPlayer"
-            android:process=":player"
-            android:configChanges="orientation|keyboardHidden|screenSize"
-            android:launchMode="singleTop"
-            android:exported="false"
-            android:screenOrientation="user"
-            android:theme="@style/PlayerTheme"/>
-
         <receiver android:name=".IMEServiceBroadCastReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -110,6 +115,15 @@
                 <data android:scheme="file" />
             </intent-filter>
         </receiver>
+
+        <!-- 前台守护服务：常驻通知，降低被系统杀后台概率，定期巡检拉起输入法服务 -->
+        <service
+            android:name=".service.ForegroundGuardService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="remote input method guard"/>
+        </service>
 
         <activity android:name=".widget.ScreenShotActivity" android:exported="false"/>
     </application>

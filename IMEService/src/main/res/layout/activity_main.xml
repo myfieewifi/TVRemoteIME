@@ -222,6 +222,16 @@
                 android:text="切换默认输入法" />
 
             <Button
+                android:id="@+id/btnRootSet"
+                style="@style/MainButtonSecondary"
+                android:text="⚡ ROOT 一键设为默认（需已ROOT）" />
+
+            <Button
+                android:id="@+id/btnAdbGuide"
+                style="@style/MainButtonSecondary"
+                android:text="🔧 ADB 切换输入法（需开启开发者模式）" />
+
+            <Button
                 android:id="@+id/btnStartService"
                 style="@style/MainButtonSecondary"
                 android:text="@string/btn_start_service" />

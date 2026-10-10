@@ -1,203 +1,94 @@
 package com.zxt.dlna.dmp;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
-import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
-import android.os.SystemClock;
 import android.util.Log;
-import android.view.KeyCharacterMap;
-import android.view.KeyEvent;
 
 import com.zxt.dlna.util.Action;
 
-import player.XLVideoPlayActivity;
-import tv.danmaku.ijk.media.player.IMediaPlayer;
 /**
- * Created by kingt on 2018/4/10.
+ * DLNA 控制命令中转（替代旧的 IJK 播放器 Activity）
+ * 因为播放器运行在独立 :player 进程，DLNA 的控制指令（播放/暂停/停止/拖动/音量）
+ * 会被 Cling 框架通过广播发送过来，本类负责把这些广播转发到 ExoPlayerActivity
  */
-public class IJKPlayer extends XLVideoPlayActivity
-{
-    private static final int MESSAGE_UPDATE_PROGRESS = 10001;
-    private Handler selfHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MESSAGE_UPDATE_PROGRESS:
-                    if(mVideoView.isPlaying() && mMediaListener != null) {
-                        int position = mVideoView.getCurrentPosition();
-                        int duration = mVideoView.getDuration();
-                        mMediaListener.positionChanged(position);
-                        mMediaListener.durationChanged(duration);
-
-                        selfHandler.sendEmptyMessageDelayed(MESSAGE_UPDATE_PROGRESS, 500);
-                    }
-                    break;
-            }
-        }
-    };
+public class IJKPlayer {
+    private static final String TAG = "DLNABridge";
+    private static BroadcastReceiver sReceiver = null;
+    private static boolean sRegistered = false;
 
     public static GPlayer.MediaListener mMediaListener;
 
-    public static void setMediaListener(GPlayer.MediaListener mediaListener) {
-        mMediaListener = mediaListener;
-    }
-
-    private void sendUpdateMessage(){
-        selfHandler.removeMessages(MESSAGE_UPDATE_PROGRESS);
-        selfHandler.sendEmptyMessageDelayed(MESSAGE_UPDATE_PROGRESS, 500);
-    }
-
-    @Override
-    protected void startDownloadTask(String videoPath, int videoIndex) {
-        super.startDownloadTask(videoPath, videoIndex);
-        //非直播源
-        isLive = false;
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        registerBrocast();
-    }
-
-    @Override
-    protected void onDestroy() {
-        unregisterBrocast();
-        mMediaListener = null;
-        super.onDestroy();
-    }
-
-    @Override
-    public void onCompletion(IMediaPlayer iMediaPlayer) {
-        if (null != mMediaListener) {
-            mMediaListener.endOfMedia();
-        }
-        super.onCompletion(iMediaPlayer);
-        selfHandler.removeMessages(MESSAGE_UPDATE_PROGRESS);
-    }
-
-    @Override
-    protected void setVideoPath(String path) {
-        super.setVideoPath(path);
-        if (null != mMediaListener) {
-            mMediaListener.start();
-        }
-        this.sendUpdateMessage();
-    }
-
-    @Override
-    protected void start() {
-        super.start();
-        if (null != mMediaListener) {
-            mMediaListener.start();
-        }
-        this.sendUpdateMessage();
-    }
-    @Override
-    protected void pause() {
-        super.pause();
-        if (null != mMediaListener) {
-            mMediaListener.pause();
-        }
-        selfHandler.removeMessages(MESSAGE_UPDATE_PROGRESS);
-    }
-    @Override
-    protected void resume() {
-        super.resume();
-        if (null != mMediaListener) {
-            mMediaListener.start();
-        }
-        this.sendUpdateMessage();
-    }
-    @Override
-    protected void stop() {
-        if (null != mMediaListener) {
-            mMediaListener.stop();
-        }
-        super.stop();
-        selfHandler.removeMessages(MESSAGE_UPDATE_PROGRESS);
-    }
-
-    @Override
-    protected void seekTo(int position) {
-        super.seekTo(position);
-        if (null != mMediaListener) {
-            mMediaListener.positionChanged(position);
+    /**
+     * 旧代码保留签名（被 ZxtMediaPlayer 调用）。
+     * 新版由播放桥接服务直接拉起 ExoPlayerActivity，这里只需确保广播接收器已注册
+     */
+    public static void intentTo(Class<?> cls, Context context, String playURI, String name) {
+        ensureReceiverRegistered(context);
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName(context.getPackageName(),
+                    "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
+            intent.putExtra("type", "video");
+            intent.putExtra("name", name == null ? "" : name);
+            intent.putExtra("playURI", playURI);
+            context.startService(intent);
+        } catch (Throwable t) {
+            Log.e(TAG, "启动 DLNA 播放桥接服务失败", t);
         }
     }
 
-    @Override
-    public void finish() {
-        mMediaListener = null;
-        super.finish();
-    }
+    /** 注册接收 DLNA 控制广播 */
+    public static synchronized void ensureReceiverRegistered(final Context ctx) {
+        if (sRegistered) return;
+        try {
+            sReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (intent == null || intent.getAction() == null) return;
+                    String action = intent.getAction();
+                    Log.i(TAG, "DLNA cmd: " + action);
+                    // 把控制命令重新定向到 ExoPlayerActivity（跨进程广播）
+                    Intent fwd = new Intent(action);
+                    fwd.setPackage(context.getPackageName());
+                    fwd.putExtras(intent);
+                    context.sendBroadcast(fwd);
 
-    private PlayBrocastReceiver playRecevieBrocast = new PlayBrocastReceiver();
-
-    public void registerBrocast() {
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(Action.DMR);
-        intentFilter.addAction(Action.VIDEO_PLAY);
-        registerReceiver(this.playRecevieBrocast, intentFilter);
-    }
-
-    public void unregisterBrocast() {
-        unregisterReceiver(this.playRecevieBrocast);
-    }
-
-    class PlayBrocastReceiver extends BroadcastReceiver {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            String str1 = intent.getStringExtra("helpAction");
-
-            if (str1.equals(Action.PLAY)) {
-                doPauseResume();
-            } else if (str1.equals(Action.PAUSE)) {
-                doPauseResume();
-            } else if (str1.equals(Action.SEEK)) {
-                boolean isPaused = false;
-                if (!mVideoView.isPlaying()) {
-                    isPaused = true;
-                }
-                int position = intent.getIntExtra("position", 0);
-                seekTo(position);
-            } else if (str1.equals(Action.SET_VOLUME)) {
-
-                long eventTime = SystemClock.uptimeMillis();
-
-                double vol = intent.getDoubleExtra("volume", 0);
-                int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                int volume = (int) (vol * maxVolume);
-                // 变更声音
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0);
-
-                Log.d("IJKPlayer", "set_volume:" + vol + ", curVol:" + curVol + ", newVol:" + volume);
-                final int i = (int) (volume * 1.0 / maxVolume * 100);
-                final String s = i == 0 ? "" : i + "%";
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        $.id(com.afap.ijkplayer.R.id.app_video_volume_icon).image(i == 0 ? com.afap.ijkplayer.R.drawable.ic_volume_off_white_36dp : com.afap.ijkplayer.R.drawable
-                                .ic_volume_up_white_36dp);
-
-                        $.id(com.afap.ijkplayer.R.id.app_video_volume_box).visible();
-                        $.id(com.afap.ijkplayer.R.id.app_video_volume).text(s).visible();
-
-                        handler.removeMessages(MESSAGE_HIDE_CENTER_BOX);
-                        handler.sendEmptyMessageDelayed(MESSAGE_HIDE_CENTER_BOX, 500);
+                    // 音量指令在本地直接处理（音量控制不依赖播放器进程）
+                    if (Action.SET_VOLUME.equals(action)) {
+                        try {
+                            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                            double vol = intent.getDoubleExtra("volume", 0);
+                            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                            int target = (int) (vol * max);
+                            am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+                        } catch (Throwable t) {
+                            Log.e(TAG, "set volume failed", t);
+                        }
                     }
-                });
-            } else if (str1.equals(Action.STOP)) {
-                mVideoView.stopPlayback();
+                }
+            };
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Action.PLAY);
+            filter.addAction(Action.PAUSE);
+            filter.addAction(Action.STOP);
+            filter.addAction(Action.SEEK);
+            filter.addAction(Action.SET_VOLUME);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ctx.registerReceiver(sReceiver, filter, Context.RECEIVER_EXPORTED);
+            } else {
+                ctx.registerReceiver(sReceiver, filter);
             }
+            sRegistered = true;
+            Log.i(TAG, "DLNA control receiver registered");
+        } catch (Throwable t) {
+            Log.e(TAG, "register receiver failed", t);
         }
     }
 }

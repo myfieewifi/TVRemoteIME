@@ -1,68 +1,45 @@
 package cn.cloudhs.tvremoteime;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.os.IBinder;
 import android.text.TextUtils;
-import android.util.Log;
 
-import com.zxt.dlna.dmr.ZxtMediaRenderer;
+import cn.cloudhs.tvremoteime.upnp.DLNARendererService;
 
-import org.fourthline.cling.android.AndroidUpnpService;
-import org.fourthline.cling.android.AndroidUpnpServiceImpl;
-
+/**
+ * DLNA 投屏工具类
+ */
 public class DLNAUtils {
-    private static String TAG = "DLNAUtils";
-    private static ZxtMediaRenderer mMediaRenderer = null;
+    private static final String PREFS = "dlna_settings";
 
     public static void setDLNANameSuffix(Context context, String nameSuffix){
-        SharedPreferences sharedPreferences = context.getApplicationContext().getSharedPreferences("dlna_settings", 0);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString("nameSuffix", nameSuffix);
-        editor.commit();
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences(PREFS, 0);
+        sp.edit().putString("nameSuffix", nameSuffix == null ? "" : nameSuffix).apply();
+        // 修改名称后重启 DLNA 服务生效
+        stopDLNAService(context);
         startDLNAService(context);
     }
 
     public static String getDLNANameSuffix(Context context){
-        SharedPreferences sharedPreferences = context.getApplicationContext().getSharedPreferences("dlna_settings", 0);
-        return sharedPreferences.getString("nameSuffix", "");
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences(PREFS, 0);
+        return sp.getString("nameSuffix", "");
     }
 
-    public static void startDLNAService(final Context context){
-        ServiceConnection serviceConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                AndroidUpnpService upnpService = (AndroidUpnpService) service;
-                Log.i(TAG, "DLNA: onServiceConnected");
-                String dlnaName = context.getString(R.string.app_name);
-                String dlnaNameSuffix = getDLNANameSuffix(context);
-                if(!TextUtils.isEmpty(dlnaNameSuffix)) dlnaName += "(" + dlnaNameSuffix + ")";
-                if(mMediaRenderer != null){
-                    mMediaRenderer.stopAllMediaPlayers();
-                    upnpService.getRegistry().removeAllLocalDevices();
-                    mMediaRenderer = null;
-                }
-                mMediaRenderer = new ZxtMediaRenderer(1, dlnaName , context);
-                upnpService.getRegistry().addDevice(mMediaRenderer.getDevice());
-                Environment.toastInHandler(context, context.getString(R.string.app_name)  + " DLNA服务已启动");
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                Log.i(TAG, "DLNA: onServiceDisconnected");
-            }
-        };
-        context.bindService(
-                new Intent(context, AndroidUpnpServiceImpl.class),
-                serviceConnection, Context.BIND_AUTO_CREATE);
+    /** 启动 DLNA 投屏前台服务（DMR） */
+    public static synchronized void startDLNAService(final Context context){
+        if (context == null) return;
+        Context app = context.getApplicationContext();
+        // 前台服务自维护Upnp绑定，重复调用也没关系（onStartCommand START_STICKY）
+        DLNARendererService.startMe(app);
     }
 
-    public static void stopDLNAService(){
-        if(mMediaRenderer != null){
-            mMediaRenderer.stopAllMediaPlayers();
-        }
+    /** 停止 DLNA 服务 */
+    public static synchronized void stopDLNAService(Context context){
+        if (context == null) return;
+        try {
+            context.getApplicationContext().stopService(
+                new android.content.Intent(context.getApplicationContext(),
+                    cn.cloudhs.tvremoteime.upnp.DLNARendererService.class));
+        } catch (Throwable ignore) {}
     }
 }
