@@ -12,19 +12,21 @@ import android.util.Log;
 import com.zxt.dlna.util.Action;
 
 /**
- * DLNA 控制命令中转（替代旧的 IJK 播放器 Activity）
- * 因为播放器运行在独立 :player 进程，DLNA 的控制指令（播放/暂停/停止/拖动/音量）
- * 会被 Cling 框架通过广播发送过来，本类负责把这些广播转发到 ExoPlayerActivity；
- * 同时接收播放器回传的状态（开始/暂停/停止/结束），通过 MediaListener 回调给 Cling 框架。
+ * DLNA 控制命令中转桥
+ *
+ * 接收 ZxtMediaPlayer 发来的控制广播（Action.DMR + helpAction），转发到
+ * cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService（主进程服务）；
+ * 同时接收 ExoPlayerActivity 回传的播放状态（PLAYER_START/PAUSE/STOP/END/SEEK_DONE），
+ * 通过 MediaListener 回调给 Cling 框架，让手机APP能看到同步的状态。
  */
 public class IJKPlayer {
     private static final String TAG = "DLNABridge";
 
-    // 播放器回传状态的广播 action（由 ExoPlayerActivity 在播放状态变化时发送）
-    public static final String ACTION_PLAYER_START   = "cn.cloudhs.tvremoteime.PLAYER_START";
-    public static final String ACTION_PLAYER_PAUSE   = "cn.cloudhs.tvremoteime.PLAYER_PAUSE";
-    public static final String ACTION_PLAYER_STOP    = "cn.cloudhs.tvremoteime.PLAYER_STOP";
-    public static final String ACTION_PLAYER_END     = "cn.cloudhs.tvremoteime.PLAYER_END";
+    // ExoPlayerActivity 回传播放状态的 action（播放器在独立 :player 进程发送，需要用包限定接收）
+    public static final String ACTION_PLAYER_START    = "cn.cloudhs.tvremoteime.PLAYER_START";
+    public static final String ACTION_PLAYER_PAUSE    = "cn.cloudhs.tvremoteime.PLAYER_PAUSE";
+    public static final String ACTION_PLAYER_STOP     = "cn.cloudhs.tvremoteime.PLAYER_STOP";
+    public static final String ACTION_PLAYER_END      = "cn.cloudhs.tvremoteime.PLAYER_END";
     public static final String ACTION_PLAYER_SEEK_DONE = "cn.cloudhs.tvremoteime.PLAYER_SEEK_DONE";
 
     private static BroadcastReceiver sReceiver = null;
@@ -33,137 +35,137 @@ public class IJKPlayer {
 
     public static GPlayer.MediaListener mMediaListener;
 
-    /**
-     * 旧代码兼容入口：ZxtMediaPlayer.ensureControl() 调用此方法启动播放器
-     */
+    /** 旧代码兼容入口：ZxtMediaPlayer.setURI 调用此方法拉起播放器 */
     public static void intentTo(Class<?> cls, Context context, String playURI, String name) {
+        // 不实际使用 cls（旧 XLVideoPlayActivity），统一走 DlnaPlayBridgeService 拉起 ExoPlayer
         ensureReceiverRegistered(context);
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(context.getPackageName(),
+                "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
+        intent.putExtra("type", "video");
+        intent.putExtra("name", name == null ? "DLNA投屏" : name);
+        intent.putExtra("playURI", playURI);
         try {
-            Intent intent = new Intent();
-            intent.setComponent(new ComponentName(context.getPackageName(),
-                    "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
-            intent.putExtra("type", "video");
-            intent.putExtra("name", name == null ? "" : name);
-            intent.putExtra("playURI", playURI);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent);
             } else {
                 context.startService(intent);
             }
-            Log.i(TAG, "sent play intent: " + playURI);
         } catch (Throwable t) {
-            Log.e(TAG, "start play service failed", t);
+            Log.e(TAG, "启动播放桥接服务失败", t);
         }
     }
 
-    /**
-     * 被 ZxtMediaPlayer 调用（旧拼写），直接转发到新方法
-     */
-    public static void ensureReceiverRegistered(Context ctx) {
-        ensureReceiverRegistered(ctx);
-    }
-
-    /**
-     * 设置播放状态回调监听器，由 ZxtMediaPlayer 传入
-     */
     public static void setMediaListener(GPlayer.MediaListener listener) {
         mMediaListener = listener;
-        Log.i(TAG, "media listener set: " + (listener != null));
     }
 
-    /**
-     * 注册广播接收器，双向桥接 DLNA <-> 播放器
-     */
-    public static synchronized void ensureReceiverRegistered(final Context ctx) {
+    public static void ensureReceiverRegistered(Context context) {
         if (sRegistered) return;
-        if (ctx == null) return;
-        final Context appCtx = ctx.getApplicationContext();
-        sAppCtx = appCtx;
-        sReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent == null || intent.getAction() == null) return;
-                String action = intent.getAction();
-                // ---- 播放器回传状态：调用 MediaListener 回调 Cling 框架 ----
-                try {
-                    if (ACTION_PLAYER_START.equals(action) && mMediaListener != null) {
-                        mMediaListener.start();
-                        return;
-                    }
-                    if (ACTION_PLAYER_PAUSE.equals(action) && mMediaListener != null) {
-                        mMediaListener.pause();
-                        return;
-                    }
-                    if (ACTION_PLAYER_STOP.equals(action) && mMediaListener != null) {
-                        mMediaListener.stop();
-                        return;
-                    }
-                    if (ACTION_PLAYER_END.equals(action) && mMediaListener != null) {
-                        mMediaListener.endOfMedia();
-                        return;
-                    }
-                } catch (Throwable t) {
-                    Log.e(TAG, "notify listener failed", t);
-                }
-                // ---- DLNA 控制指令：转发到播放器进程 ----
-                try {
-                    Intent fwd = new Intent(action);
-                    fwd.setPackage(appCtx.getPackageName());
-                    if (intent.getExtras() != null) fwd.putExtras(intent.getExtras());
-                    fwd.setComponent(new ComponentName(appCtx.getPackageName(),
-                            "cn.cloudhs.tvremoteime.player.ExoPlayerActivity"));
-                    // 这些 action 是发给 Activity 的控制广播；
-                    // Activity 在独立进程里，我们通过桥接服务转发
-                    Intent ctrl = new Intent();
-                    ctrl.setComponent(new ComponentName(appCtx.getPackageName(),
-                            "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
-                    ctrl.putExtra("dlna_action", action);
-                    if (intent.getExtras() != null) ctrl.putExtras(intent.getExtras());
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        appCtx.startForegroundService(ctrl);
-                    } else {
-                        appCtx.startService(ctrl);
-                    }
-                } catch (Throwable t) {
-                    Log.e(TAG, "forward control failed", t);
-                }
-                // 音量控制直接在本进程处理（系统音量，不跨进程）
-                if (Action.SET_VOLUME.equals(action)) {
-                    try {
-                        AudioManager am = (AudioManager) appCtx.getSystemService(Context.AUDIO_SERVICE);
-                        double vol = intent.getDoubleExtra("volume", 0);
-                        int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                        int target = (int) (vol * max);
-                        am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
-                    } catch (Throwable t) {
-                        Log.e(TAG, "set volume failed", t);
-                    }
-                }
-            }
-        };
+        if (context == null) return;
+        sAppCtx = context.getApplicationContext();
         IntentFilter filter = new IntentFilter();
-        // DLNA 发给播放器的控制指令
-        filter.addAction(Action.PLAY);
-        filter.addAction(Action.PAUSE);
-        filter.addAction(Action.STOP);
-        filter.addAction(Action.SEEK);
-        filter.addAction(Action.SET_VOLUME);
-        // 播放器回传给 DLNA 的状态
+        // ZxtMediaPlayer 的控制指令：Action.DMR + helpAction 字段（play/pause/stop/seek/setvolume）
+        filter.addAction(Action.DMR);
+        // 播放器状态回传
         filter.addAction(ACTION_PLAYER_START);
         filter.addAction(ACTION_PLAYER_PAUSE);
         filter.addAction(ACTION_PLAYER_STOP);
         filter.addAction(ACTION_PLAYER_END);
         filter.addAction(ACTION_PLAYER_SEEK_DONE);
+        sReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context ctx, Intent intent) {
+                if (intent == null) return;
+                String act = intent.getAction();
+                if (act == null) return;
+
+                if (Action.DMR.equals(act)) {
+                    // ZxtMediaPlayer 通过 helpAction 字段发指令（play/pause/stop/seek/setvolume）
+                    String help = intent.getStringExtra("helpAction");
+                    if (help == null) return;
+                    forwardCtrlToPlayer(help, intent);
+                    return;
+                }
+
+                // 播放器状态回传 → 通知 Cling
+                if (mMediaListener == null) return;
+                try {
+                    if (ACTION_PLAYER_START.equals(act)) {
+                        mMediaListener.start();
+                    } else if (ACTION_PLAYER_PAUSE.equals(act)) {
+                        mMediaListener.pause();
+                    } else if (ACTION_PLAYER_STOP.equals(act) || ACTION_PLAYER_END.equals(act)) {
+                        mMediaListener.stop();
+                        if (ACTION_PLAYER_END.equals(act)) mMediaListener.endOfMedia();
+                    } else if (ACTION_PLAYER_SEEK_DONE.equals(act)) {
+                        int pos = intent.getIntExtra("position", 0);
+                        mMediaListener.positionChanged(pos);
+                    }
+                } catch (Throwable t) {
+                    Log.w(TAG, "回调播放器状态失败", t);
+                }
+            }
+        };
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                appCtx.registerReceiver(sReceiver, filter, Context.RECEIVER_EXPORTED);
+                sAppCtx.registerReceiver(sReceiver, filter, Context.RECEIVER_EXPORTED);
             } else {
-                appCtx.registerReceiver(sReceiver, filter);
+                sAppCtx.registerReceiver(sReceiver, filter);
             }
             sRegistered = true;
-            Log.i(TAG, "DLNA bridge receiver registered");
+            Log.i(TAG, "DLNA 控制/状态广播接收器已注册");
         } catch (Throwable t) {
-            Log.e(TAG, "register receiver failed", t);
+            Log.e(TAG, "注册广播接收器失败", t);
+        }
+    }
+
+    /** 把 DLNA 控制指令通过 DlnaPlayBridgeService 转发给独立进程中的播放器 */
+    private static void forwardCtrlToPlayer(String help, Intent src) {
+        if (sAppCtx == null) return;
+        String cmd;
+        long seekPos = 0;
+        switch (help) {
+            case Action.PLAY:    cmd = "play";  break;
+            case Action.PAUSE:   cmd = "pause"; break;
+            case Action.STOP:    cmd = "stop";  break;
+            case Action.SEEK:
+                cmd = "seek";
+                // ZxtMediaPlayer.seek() 传的 position 单位是毫秒
+                seekPos = src.getLongExtra("position", 0);
+                break;
+            case Action.SET_VOLUME:
+                // 音量由 AudioManager 全局控制，这里仅设置系统媒体音量
+                try {
+                    double v = src.getDoubleExtra("volume", -1);
+                    if (v >= 0) {
+                        AudioManager am = (AudioManager) sAppCtx.getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                            am.setStreamVolume(AudioManager.STREAM_MUSIC, (int)(v * max), 0);
+                        }
+                    }
+                } catch (Throwable ignore) {}
+                return;
+            default:
+                Log.w(TAG, "未识别的 DLNA 控制指令: " + help);
+                return;
+        }
+        Intent si = new Intent();
+        si.setComponent(new ComponentName(sAppCtx.getPackageName(),
+                "cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService"));
+        si.putExtra("dlna_action", cmd);
+        if ("seek".equals(cmd)) {
+            si.putExtra("seek_pos", seekPos);
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                sAppCtx.startForegroundService(si);
+            } else {
+                sAppCtx.startService(si);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "转发 DLNA 控制指令失败: " + cmd, t);
         }
     }
 }

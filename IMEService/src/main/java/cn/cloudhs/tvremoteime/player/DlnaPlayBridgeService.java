@@ -53,19 +53,23 @@ public class DlnaPlayBridgeService extends Service {
         return START_NOT_STICKY;
     }
 
-    /** 把 DLNA 控制指令广播给播放器进程的 ExoPlayerActivity */
+    /** 把 DLNA 控制指令广播给播放器进程的 ExoPlayerActivity
+     *
+     * 注意：入参 action 已经是 IJKPlayer 转发过来的短命令（play/pause/stop/seek），
+     * 不是原始的 com.zxt.droiddlna.action.xxx 字符串。
+     */
     private void forwardControl(String action, Intent src) {
         try {
             Intent ctrl = new Intent(ACTION_DLNA_CTRL);
             ctrl.setPackage(getPackageName());
             String cmd;
             switch (action) {
-                case "com.zxt.droiddlna.action.play":  cmd = "play";  break;
-                case "com.zxt.droiddlna.action.pause": cmd = "pause"; break;
-                case "com.zxt.droiddlna.action.stop":  cmd = "stop";  break;
-                case "com.zxt.droiddlna.action.seek":
+                case "play":  cmd = "play";  break;
+                case "pause": cmd = "pause"; break;
+                case "stop":  cmd = "stop";  break;
+                case "seek":
                     cmd = "seek";
-                    long pos = src.getLongExtra("pos", src.getLongExtra("position", 0));
+                    long pos = src.getLongExtra("seek_pos", src.getLongExtra("position", 0));
                     ctrl.putExtra(EXTRA_SEEK_POS, pos);
                     break;
                 default:

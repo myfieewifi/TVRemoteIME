@@ -36,7 +36,9 @@ public class FileRequestProcesser  implements RequestProcesser {
     @Override
     public boolean isRequest(NanoHTTPD.IHTTPSession session, String fileName) {
         if(session.getMethod() == NanoHTTPD.Method.GET){
-            return fileName.startsWith("/file/dir/")
+            // 兼容两种路径：新前端用 /files?path=xxx，旧版用 /file/dir/xxx；以及 /file/download/xxx
+            return fileName.equals("/files")
+                    || fileName.startsWith("/file/dir/")
                     || fileName.startsWith("/file/download/");
         }
         else if(session.getMethod() == NanoHTTPD.Method.POST){
@@ -54,10 +56,18 @@ public class FileRequestProcesser  implements RequestProcesser {
     @Override
     public NanoHTTPD.Response doResponse(NanoHTTPD.IHTTPSession session, String fileName, Map<String, String> params, Map<String, String> files) {
         if(session.getMethod() == NanoHTTPD.Method.GET){
+            if(fileName.equals("/files")){
+                // 新前端请求方式：GET /files?path=xxx
+                String p = params != null ? params.get("path") : null;
+                return responseDirData(p == null ? "" : p);
+            }
             if(fileName.startsWith("/file/dir/")) {
                 return responseDirData(fileName.substring("/file/dir/".length()));
             }else if(fileName.startsWith("/file/download/")){
-                return downloadFileData(fileName.substring("/file/download/".length()));
+                // 容忍 // 双重斜杠问题
+                String rel = fileName.substring("/file/download/".length());
+                while(rel.startsWith("/")) rel = rel.substring(1);
+                return downloadFileData(rel);
             }
         }
         else if(session.getMethod() == NanoHTTPD.Method.POST) {
@@ -89,7 +99,11 @@ public class FileRequestProcesser  implements RequestProcesser {
         try {
             dirName = java.net.URLDecoder.decode(dirName == null ? "" : dirName, "UTF-8");
         } catch (Exception ignore) {}
-        File path = new File(Environment.getExternalStorageDirectory(), dirName);
+        // 规范化路径：去掉开头斜杠
+        while(dirName.startsWith("/")) dirName = dirName.substring(1);
+        File path = dirName.isEmpty()
+                ? Environment.getExternalStorageDirectory()
+                : new File(Environment.getExternalStorageDirectory(), dirName);
         String root = Environment.getExternalStorageDirectory().getPath();
         JSONArray dirs = new JSONArray();
         JSONArray files = new JSONArray();

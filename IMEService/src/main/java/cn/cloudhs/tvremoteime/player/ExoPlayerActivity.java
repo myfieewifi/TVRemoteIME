@@ -35,20 +35,23 @@ import com.google.android.exoplayer2.source.rtsp.RtspMediaSource;
 import com.google.android.exoplayer2.ui.StyledPlayerView;
 import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
-import com.google.android.exoplayer2.util.Util;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
 import cn.cloudhs.tvremoteime.AppConfig;
 import cn.cloudhs.tvremoteime.R;
 
 /**
- * v1.0 新版投屏播放器：基于 ExoPlayer 2.19.1，支持 MP4/MKV/FLV/HLS(m3u8)/DASH/RTSP。
+ * v1.0 新版投屏播放器（基于 ExoPlayer 2.19.1）
+ *
+ * 支持 MP4/MKV/FLV/HLS(m3u8)/DASH/RTSP；运行于 :player 独立进程，退出即回收内存。
  *
  * Intent extra:
- *   videoUrl: 视频地址
- *   videoTitle: 标题（可选）
+ *   videoUrl / url / data:      视频地址
+ *   videoTitle:                  标题（可选）
+ *   type:                        hls/dash/rtsp（可选，自动检测）
+ *   userAgent:                   HTTP User-Agent（可选，默认读配置）
+ *   fromDLNA:                    是否由 DLNA 投屏拉起（true 时会回传播放状态）
  */
 public class ExoPlayerActivity extends Activity {
 
@@ -58,20 +61,18 @@ public class ExoPlayerActivity extends Activity {
     private ExoPlayer player;
     private TextView tvTitle, tvPos, tvDur, tvStatus;
     private SeekBar seekBar;
-    private ImageButton btnPlayPause, btnBack, btnFF, btnRew, btnFull;
+    private ImageButton btnPlayPause, btnBack, btnFF, btnRew;
     private LinearLayout controls;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean mControlsShowing = true;
     private Runnable hideControlsTask;
     private String videoUrl;
     private String videoTitle;
+    private boolean mDestroyed = false;
 
-    /** 接收主进程发来的「停止播放」广播（播放器跑在独立进程 :player，需跨进程通信） */
+    /** 接收主进程发来的「停止播放」广播 */
     private final BroadcastReceiver stopReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            finish();
-        }
+        @Override public void onReceive(Context context, Intent intent) { finish(); }
     };
 
     /** 接收 DLNA 控制指令（播放/暂停/停止/拖动），由主进程 DlnaPlayBridgeService 转发 */
@@ -85,6 +86,7 @@ public class ExoPlayerActivity extends Activity {
             switch (cmd) {
                 case "play":
                     player.setPlayWhenReady(true);
+                    showControls(false);
                     break;
                 case "pause":
                     player.setPlayWhenReady(false);
@@ -100,7 +102,7 @@ public class ExoPlayerActivity extends Activity {
         }
     };
 
-    /** 是否是 DLNA 投屏启动的；true 时在播放状态变化时广播回传给 DLNA 框架 */
+    /** 是否由 DLNA 投屏启动，true 时在播放状态变化时广播回传给 DLNA 框架 */
     private boolean mFromDLNA = false;
 
     private void notifyDlnaState(String stateAction) {
@@ -109,9 +111,7 @@ public class ExoPlayerActivity extends Activity {
             Intent i = new Intent(stateAction);
             i.setPackage(getPackageName());
             sendBroadcast(i);
-        } catch (Throwable t) {
-            Log.e(TAG, "notify dlna state failed", t);
-        }
+        } catch (Throwable t) { Log.e(TAG, "notify dlna state failed", t); }
     }
 
     public static void start(Context ctx, String url, String title) {
@@ -139,7 +139,6 @@ public class ExoPlayerActivity extends Activity {
         btnBack = findViewById(R.id.btn_back);
         btnFF = findViewById(R.id.btn_ff);
         btnRew = findViewById(R.id.btn_rew);
-        btnFull = findViewById(R.id.btn_fullscreen);
         controls = findViewById(R.id.controls);
 
         videoUrl = getIntent().getStringExtra("videoUrl");
@@ -148,12 +147,9 @@ public class ExoPlayerActivity extends Activity {
         if (videoUrl == null && getIntent().getData() != null) {
             videoUrl = getIntent().getData().toString();
         }
-        if (videoUrl == null) {
-            videoUrl = getIntent().getStringExtra("url");
-        }
-        if (videoTitle == null) videoTitle = "投屏播放";
+        if (videoUrl == null) videoUrl = getIntent().getStringExtra("url");
+        if (videoTitle == null) videoTitle = mFromDLNA ? "DLNA投屏" : "投屏播放";
 
-        // 兼容 url 编码
         try { videoUrl = URLDecoder.decode(videoUrl, "UTF-8"); } catch (Exception ignore) {}
 
         tvTitle.setText(videoTitle);
@@ -163,7 +159,8 @@ public class ExoPlayerActivity extends Activity {
         btnPlayPause.setOnClickListener(v -> togglePlay());
         btnFF.setOnClickListener(v -> seekForward());
         btnRew.setOnClickListener(v -> seekBack());
-        btnFull.setOnClickListener(v -> toggleControls());
+        // 点击播放器主体切换控制条
+        playerView.setOnClickListener(v -> toggleControls());
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             boolean wasPlaying = false;
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -188,20 +185,20 @@ public class ExoPlayerActivity extends Activity {
         });
 
         hideControlsTask = () -> showControls(false);
-        // 注册停止播放广播（主进程 /playStop 触发，跨进程可达）
+
         try {
-        registerReceiver(stopReceiver,
-                new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
-        IntentFilter dlnaFilter = new IntentFilter(DlnaPlayBridgeService.ACTION_DLNA_CTRL);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(dlnaCtrlReceiver, dlnaFilter, Context.RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(dlnaCtrlReceiver, dlnaFilter);
-        }
-        } catch (Exception ignore) {}
+            registerReceiver(stopReceiver, new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
+            IntentFilter dlnaFilter = new IntentFilter(DlnaPlayBridgeService.ACTION_DLNA_CTRL);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(dlnaCtrlReceiver, dlnaFilter, Context.RECEIVER_EXPORTED);
+            } else {
+                registerReceiver(dlnaCtrlReceiver, dlnaFilter);
+            }
+        } catch (Exception e) { Log.e(TAG, "注册广播失败", e); }
 
         preparePlayer();
-        showControls(true);
+        // DLNA 投屏不自动显示控制条，用户按键再显示
+        showControls(!mFromDLNA);
     }
 
     private void preparePlayer() {
@@ -209,8 +206,6 @@ public class ExoPlayerActivity extends Activity {
             player = new ExoPlayer.Builder(this).build();
             playerView.setPlayer(player);
 
-            // 优先使用主进程通过 Intent 传入的 UA（跨进程 SharedPreferences 不保证实时同步），
-            // 未传入时回退读取本地持久化配置
             String userAgent = getIntent().getStringExtra("userAgent");
             if (userAgent == null || userAgent.trim().isEmpty()) {
                 userAgent = AppConfig.getInstance(this).getPlayerUserAgent();
@@ -229,17 +224,14 @@ public class ExoPlayerActivity extends Activity {
             String type = getIntent().getStringExtra("type");
 
             MediaSource mediaSource;
-            if ("hls".equalsIgnoreCase(type)
-                    || last.endsWith(".m3u8") || q.contains("m3u8")) {
+            if ("hls".equalsIgnoreCase(type) || last.endsWith(".m3u8") || q.contains("m3u8")) {
                 mediaSource = new HlsMediaSource.Factory(dsFactory)
                         .createMediaSource(MediaItem.fromUri(uri));
             } else if ("dash".equalsIgnoreCase(type) || last.endsWith(".mpd")) {
                 mediaSource = new DashMediaSource.Factory(dsFactory)
                         .createMediaSource(MediaItem.fromUri(uri));
-            } else if ("rtsp".equalsIgnoreCase(type)
-                    || "rtsp".equalsIgnoreCase(uri.getScheme())) {
-                mediaSource = new RtspMediaSource.Factory()
-                        .createMediaSource(MediaItem.fromUri(uri));
+            } else if ("rtsp".equalsIgnoreCase(type) || "rtsp".equalsIgnoreCase(uri.getScheme())) {
+                mediaSource = new RtspMediaSource.Factory().createMediaSource(MediaItem.fromUri(uri));
             } else {
                 mediaSource = new ProgressiveMediaSource.Factory(dsFactory)
                         .createMediaSource(MediaItem.fromUri(uri));
@@ -247,6 +239,7 @@ public class ExoPlayerActivity extends Activity {
 
             player.addListener(new Player.Listener() {
                 @Override public void onPlaybackStateChanged(int state) {
+                    if (mDestroyed) return;
                     switch (state) {
                         case Player.STATE_BUFFERING:
                             tvStatus.setText("缓冲中..."); break;
@@ -259,16 +252,13 @@ public class ExoPlayerActivity extends Activity {
                             notifyDlnaState("cn.cloudhs.tvremoteime.PLAYER_END");
                             finish();
                             break;
-                        case Player.STATE_IDLE:
-                            break;
                     }
                 }
                 @Override public void onIsPlayingChanged(boolean isPlaying) {
-                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
-                    if (!isPlaying && player != null && player.getPlaybackState() != Player.STATE_ENDED) {
-                        btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
-                    }
-                    // DLNA 状态回传
+                    if (mDestroyed) return;
+                    btnPlayPause.setImageResource(isPlaying
+                            ? android.R.drawable.ic_media_pause
+                            : android.R.drawable.ic_media_play);
                     notifyDlnaState(isPlaying
                             ? "cn.cloudhs.tvremoteime.PLAYER_START"
                             : "cn.cloudhs.tvremoteime.PLAYER_PAUSE");
@@ -291,8 +281,7 @@ public class ExoPlayerActivity extends Activity {
 
     private void togglePlay() {
         if (player == null) return;
-        if (player.isPlaying()) player.pause();
-        else player.play();
+        if (player.isPlaying()) player.pause(); else player.play();
         showControls(true);
     }
 
@@ -318,11 +307,10 @@ public class ExoPlayerActivity extends Activity {
     };
 
     private void updateSeekbar() {
-        if (player == null) return;
+        if (mDestroyed || player == null) return;
         long dur = player.getDuration();
         long pos = player.getCurrentPosition();
         if (dur > 0 && dur != C.TIME_UNSET) {
-            // SeekBar 用 0~1000 的比例值，避免长视频毫秒数过大导致 int 越界
             int max = seekBar.getMax();
             seekBar.setProgress((int) (pos * max / dur));
             tvPos.setText(formatTime(pos));
@@ -345,10 +333,12 @@ public class ExoPlayerActivity extends Activity {
     }
 
     private void showControls(boolean show) {
+        if (mDestroyed) return;
         controls.setVisibility(show ? View.VISIBLE : View.GONE);
         mControlsShowing = show;
         handler.removeCallbacks(hideControlsTask);
-        if (show && player != null && player.isPlaying()) {
+        // 仅在播放中且非DLNA投屏时自动隐藏
+        if (show && player != null && player.isPlaying() && !mFromDLNA) {
             handler.postDelayed(hideControlsTask, 4000);
         }
     }
@@ -374,7 +364,6 @@ public class ExoPlayerActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                 togglePlay(); return true;
             case KeyEvent.KEYCODE_BACK:
-                // 控制条显示时，按一次返回先隐藏控制条；控制条已隐藏则退出播放器
                 if (mControlsShowing && controls.getVisibility() == View.VISIBLE) {
                     showControls(false);
                     return true;
@@ -387,7 +376,7 @@ public class ExoPlayerActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        mDestroyed = true;
         notifyDlnaState("cn.cloudhs.tvremoteime.PLAYER_STOP");
         try { unregisterReceiver(stopReceiver); } catch (Exception ignore) {}
         try { unregisterReceiver(dlnaCtrlReceiver); } catch (Exception ignore) {}
@@ -397,18 +386,11 @@ public class ExoPlayerActivity extends Activity {
             player.release();
             player = null;
         }
+        super.onDestroy();
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // API 23 及以下在 onPause 暂停，API 24+ 在 onStop 暂停（ExoPlayer 官方建议）
-        if (player != null && Util.SDK_INT <= 23) player.setPlayWhenReady(false);
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (player != null && Util.SDK_INT > 23) player.setPlayWhenReady(false);
-    }
+    // ===== 生命周期说明 =====
+    // 此 Activity 是电视播放器：用户在手机端操作、电视屏不操作时，
+    // 系统通知/分屏/切后台都不应暂停播放；只在用户主动按返回/收到停止广播/播放结束时才退出。
+    // 因此 onPause/onStop **不暂停播放器**，仅在 onDestroy 释放资源。
 }
