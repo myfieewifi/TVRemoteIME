@@ -1,10 +1,15 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     repositories {
         google()
         mavenCentral()
+        gradlePluginPortal()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:7.4.2'
+        // 显式声明 kotlin-stdlib，避免 AGP 传递依赖版本在不同仓库解析时抖动
+        classpath 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10'
+        classpath 'org.jetbrains.kotlin:kotlin-stdlib:1.7.10'
     }
 }
 
@@ -14,16 +19,17 @@ allprojects {
         mavenCentral()
         maven { url 'https://jitpack.io' }
     }
+}
 
-    // 统一 Kotlin 标准库版本。androidx / material 等依赖会分别引入
-    // kotlin-stdlib 与 kotlin-stdlib-jdk7/jdk8 的不同版本，打包时会出现
-    // Duplicate class（重复类）而中断构建；自 Kotlin 1.8 起 jdk7/jdk8
-    // 已合并进 kotlin-stdlib，这里统一对齐到同一版本。
-    configurations.all {
-        resolutionStrategy.eachDependency { details ->
-            if (details.requested.group == 'org.jetbrains.kotlin'
-                    && details.requested.name.startsWith('kotlin-stdlib')) {
-                details.useVersion '1.8.0'
+// 统一 Kotlin 标准库版本（仅针对子模块的编译/运行时依赖，不影响 buildscript）
+subprojects {
+    afterEvaluate {
+        configurations.all {
+            resolutionStrategy.eachDependency { details ->
+                if (details.requested.group == 'org.jetbrains.kotlin'
+                        && details.requested.name.startsWith('kotlin-stdlib')) {
+                    details.useVersion '1.8.0'
+                }
             }
         }
     }
