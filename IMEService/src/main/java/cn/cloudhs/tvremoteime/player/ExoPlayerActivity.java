@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -73,6 +74,46 @@ public class ExoPlayerActivity extends Activity {
         }
     };
 
+    /** 接收 DLNA 控制指令（播放/暂停/停止/拖动），由主进程 DlnaPlayBridgeService 转发 */
+    private final BroadcastReceiver dlnaCtrlReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || player == null) return;
+            String cmd = intent.getStringExtra(DlnaPlayBridgeService.EXTRA_CTRL_CMD);
+            if (cmd == null) return;
+            Log.i(TAG, "DLNA 控制指令: " + cmd);
+            switch (cmd) {
+                case "play":
+                    player.setPlayWhenReady(true);
+                    break;
+                case "pause":
+                    player.setPlayWhenReady(false);
+                    break;
+                case "stop":
+                    finish();
+                    break;
+                case "seek":
+                    long pos = intent.getLongExtra(DlnaPlayBridgeService.EXTRA_SEEK_POS, -1);
+                    if (pos >= 0) player.seekTo(pos);
+                    break;
+            }
+        }
+    };
+
+    /** 是否是 DLNA 投屏启动的；true 时在播放状态变化时广播回传给 DLNA 框架 */
+    private boolean mFromDLNA = false;
+
+    private void notifyDlnaState(String stateAction) {
+        if (!mFromDLNA) return;
+        try {
+            Intent i = new Intent(stateAction);
+            i.setPackage(getPackageName());
+            sendBroadcast(i);
+        } catch (Throwable t) {
+            Log.e(TAG, "notify dlna state failed", t);
+        }
+    }
+
     public static void start(Context ctx, String url, String title) {
         Intent i = new Intent(ctx, ExoPlayerActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -103,6 +144,7 @@ public class ExoPlayerActivity extends Activity {
 
         videoUrl = getIntent().getStringExtra("videoUrl");
         videoTitle = getIntent().getStringExtra("videoTitle");
+        mFromDLNA = getIntent().getBooleanExtra("fromDLNA", false);
         if (videoUrl == null && getIntent().getData() != null) {
             videoUrl = getIntent().getData().toString();
         }
@@ -148,8 +190,14 @@ public class ExoPlayerActivity extends Activity {
         hideControlsTask = () -> showControls(false);
         // 注册停止播放广播（主进程 /playStop 触发，跨进程可达）
         try {
-            registerReceiver(stopReceiver,
-                    new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
+        registerReceiver(stopReceiver,
+                new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
+        IntentFilter dlnaFilter = new IntentFilter(DlnaPlayBridgeService.ACTION_DLNA_CTRL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dlnaCtrlReceiver, dlnaFilter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(dlnaCtrlReceiver, dlnaFilter);
+        }
         } catch (Exception ignore) {}
 
         preparePlayer();
@@ -208,6 +256,7 @@ public class ExoPlayerActivity extends Activity {
                             break;
                         case Player.STATE_ENDED:
                             tvStatus.setText("播放结束");
+                            notifyDlnaState("cn.cloudhs.tvremoteime.PLAYER_END");
                             finish();
                             break;
                         case Player.STATE_IDLE:
@@ -219,6 +268,10 @@ public class ExoPlayerActivity extends Activity {
                     if (!isPlaying && player != null && player.getPlaybackState() != Player.STATE_ENDED) {
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
                     }
+                    // DLNA 状态回传
+                    notifyDlnaState(isPlaying
+                            ? "cn.cloudhs.tvremoteime.PLAYER_START"
+                            : "cn.cloudhs.tvremoteime.PLAYER_PAUSE");
                 }
                 @Override public void onPlayerError(PlaybackException error) {
                     Log.e(TAG, "播放器错误", error);
@@ -335,9 +388,9 @@ public class ExoPlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        try {
-            unregisterReceiver(stopReceiver);
-        } catch (Exception ignore) {}
+        notifyDlnaState("cn.cloudhs.tvremoteime.PLAYER_STOP");
+        try { unregisterReceiver(stopReceiver); } catch (Exception ignore) {}
+        try { unregisterReceiver(dlnaCtrlReceiver); } catch (Exception ignore) {}
         handler.removeCallbacksAndMessages(null);
         if (player != null) {
             player.stop();

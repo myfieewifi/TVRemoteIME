@@ -29,6 +29,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.os.Build;
 import android.util.Log;
 
 /**
@@ -159,7 +160,11 @@ public class ZxtMediaPlayer {
         intent.putExtra("name", name);
         intent.putExtra("playURI", uri.toString());
         try {
-            mContext.startService(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mContext.startForegroundService(intent);
+            } else {
+                mContext.startService(intent);
+            }
         } catch (Throwable t) {
             Log.e(TAG, "启动 DLNA 播放桥接服务失败", t);
         }
