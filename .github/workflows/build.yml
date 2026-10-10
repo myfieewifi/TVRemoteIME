@@ -34,7 +34,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APK (all ABIs: armeabi-v7a, arm64-v8a, x86, x86_64)
+      - name: "Build Release APK (all ABIs: armeabi-v7a, arm64-v8a, x86, x86_64)"
         run: |
           # 先确保 gradle wrapper 可执行并正常构建
           ./gradlew assembleRelease --no-daemon
@@ -51,9 +51,9 @@ jobs:
           echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
           ls -lh "$APK_OUT"
           # 查看 APK 包含的 ABI（确认多架构成功）
-          if [ -f "$APK_PATH" ]; then
-            # 使用 aapt / zip 查看 lib/ 目录下的 ABI
-            unzip -l "$APK_PATH" | grep "lib/" || echo "no native libs dir"
+          if [ -f "$APK_OUT" ]; then
+            # 使用 unzip 查看 lib/ 目录下的 ABI
+            unzip -l "$APK_OUT" | grep "lib/" || echo "no native libs dir"
           fi
 
       - name: Create Release & Upload APK
