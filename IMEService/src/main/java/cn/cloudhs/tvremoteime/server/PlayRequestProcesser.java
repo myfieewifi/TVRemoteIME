@@ -95,6 +95,8 @@ public class PlayRequestProcesser implements RequestProcesser {
                 // 停止新播放器（通过广播）
                 try {
                     Intent stop = new Intent("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY");
+                    // 限定包名，确保跨进程（播放器在 :player 独立进程）也能可靠收到
+                    stop.setPackage(context.getPackageName());
                     context.sendBroadcast(stop);
                 } catch (Exception ignored) {}
                 try {

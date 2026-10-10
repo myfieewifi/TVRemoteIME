@@ -11,8 +11,7 @@
         android:layout_height="match_parent"
         android:keepScreenOn="true"
         app:use_controller="false"
-        app:resize_mode="fit"
-        xmlns:app="http://schemas.android.com/apk/res-auto"/>
+        app:resize_mode="fit"/>
 
     <!-- 顶部标题栏 -->
     <LinearLayout

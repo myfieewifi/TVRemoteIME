@@ -4,7 +4,6 @@ import android.content.Context;
 import android.util.Log;
 
 import cn.cloudhs.tvremoteime.IMEService;
-import cn.cloudhs.tvremoteime.R;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,31 +16,50 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
+ * 处理 /tv.txt 的读写。
+ *
+ * 默认的直播源模板放在 assets/tv.txt（不使用 res/raw，避免开启资源压缩
+ * （shrinkResources）时该资源被判定为未引用而裁剪，进而导致 R.raw 类里
+ * 根本不生成对应字段）。首次启动时复制到应用数据目录，之后由用户通过
+ * 网页端或接口覆盖更新。
  */
-
 public class TVRequestProcesser implements RequestProcesser {
+
+    /** 内置默认直播源模板（assets 目录下） */
+    private static final String DEFAULT_TV_ASSET = "tv.txt";
+
     private Context context;
     private File tvFile = new File(RemoteServerFileManager.baseDir, "tv.txt");
-    public TVRequestProcesser(Context context){
+
+    public TVRequestProcesser(Context context) {
         this.context = context;
         initTVData();
     }
 
-    private void initTVData(){
-        if(!tvFile.exists()){
+    private void initTVData() {
+        if (!tvFile.exists()) {
+            InputStream ins = null;
+            FileOutputStream out = null;
             try {
-                InputStream ins = context.getResources().openRawResource(R.raw.tv);
-                FileOutputStream out = new FileOutputStream(tvFile);
+                ins = openDefaultTV();
+                out = new FileOutputStream(tvFile);
                 byte[] b = new byte[1024];
-                int n = 0;
+                int n;
                 while ((n = ins.read(b)) != -1) {
                     out.write(b, 0, n);
                 }
-                ins.close();
-                out.close();
-            }catch (Exception e) {
+            } catch (Exception e) {
+                Log.e(IMEService.TAG, "init tv data", e);
+            } finally {
+                try { if (ins != null) ins.close(); } catch (IOException ignored) {}
+                try { if (out != null) out.close(); } catch (IOException ignored) {}
             }
         }
+    }
+
+    /** 打开内置的默认直播源模板 */
+    private InputStream openDefaultTV() throws IOException {
+        return context.getAssets().open(DEFAULT_TV_ASSET);
     }
 
     @Override
@@ -51,8 +69,7 @@ public class TVRequestProcesser implements RequestProcesser {
 
     @Override
     public NanoHTTPD.Response doResponse(NanoHTTPD.IHTTPSession session, String fileName, Map<String, String> params, Map<String, String> files) {
-        //if(!tvFile.exists()) return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "");
-        if(session.getMethod() == NanoHTTPD.Method.POST){
+        if (session.getMethod() == NanoHTTPD.Method.POST) {
             //edit
             String text = params.get("text");
             try {
@@ -60,13 +77,13 @@ public class TVRequestProcesser implements RequestProcesser {
                 out.write(text == null ? "" : text);
                 out.close();
                 return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "ok");
-            }catch (IOException e) {
+            } catch (IOException e) {
                 Log.e(IMEService.TAG, "POST /tv.txt", e);
             }
             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "fail");
-        }else{
+        } else {
             try {
-                InputStream inputStream = tvFile.exists() ? new FileInputStream(tvFile) : context.getResources().openRawResource(R.raw.tv);
+                InputStream inputStream = tvFile.exists() ? new FileInputStream(tvFile) : openDefaultTV();
                 return RemoteServer.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "text/plain; charset=utf-8", inputStream, (long) inputStream.available());
             } catch (IOException ioex) {
                 return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioex.getMessage());
