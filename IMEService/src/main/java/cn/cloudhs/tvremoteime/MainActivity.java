@@ -200,7 +200,7 @@ public class MainActivity extends android.app.Activity implements View.OnClickLi
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm != null) {
             cm.setPrimaryClip(ClipData.newPlainText("addr", addr));
-            Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.address_copied, Toast.LENGTH_SHORT).show();
         }
     }
 
