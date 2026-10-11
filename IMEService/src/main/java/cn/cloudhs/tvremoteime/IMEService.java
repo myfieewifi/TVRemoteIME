@@ -233,7 +233,20 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 				@Override
 				public void onTextReceived(String text) {
 					if (text != null) {
-						if(!isSendToAdbService(text)) commitText(text);
+						if (!isSendToAdbService(text) && !commitText(text)) {
+							// ADB 与 InputConnection 都不可用：说明本输入法未设为默认、
+							// 或电视端没有输入框获得焦点。之前是静默丢弃，用户还以为已输入。
+							String hint = getString(R.string.app_name)
+									+ "：请先在电视上点击输入框，并确认已将本输入法设为默认输入法";
+							try {
+								Environment.toastInHandler(IMEService.this, hint);
+							} catch (Throwable ignored) {}
+							if (mServer != null) {
+								try {
+									mServer.broadcast("{\"type\":\"textFail\",\"msg\":\"电视端暂无输入焦点（或输入法未设为默认）\"}");
+								} catch (Throwable ignored) {}
+							}
+						}
 					}
 				}
 			});

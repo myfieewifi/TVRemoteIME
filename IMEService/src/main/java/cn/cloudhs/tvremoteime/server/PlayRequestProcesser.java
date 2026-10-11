@@ -68,6 +68,17 @@ public class PlayRequestProcesser implements RequestProcesser {
                 if (!useSystem && !useIJK && !useExo) {
                     useIJK = AppConfig.ENGINE_IJK.equals(config.getPlayerEngine());
                 }
+                // 切了 IJK 但当前安装包不含 IJK 内核（其 so 仅有 armeabi-v7a）：
+                // 自动回退 Exo，避免 XLVideoPlayActivity 因 so 缺失直接崩在 :player 进程
+                String engineUsed;
+                if (useIJK && !AppConfig.isIjkAvailable()) {
+                    Log.w(TAG, "IJK 内核不可用（arm64 包），回退 ExoPlayer");
+                    useIJK = false;
+                    useExo = true;
+                    engineUsed = "exo";
+                } else {
+                    engineUsed = useSystem ? "system" : (useIJK ? "ijk" : "exo");
+                }
 
                 if (useSystem) {
                     // 调系统播放器/旧逻辑
@@ -91,7 +102,8 @@ public class PlayRequestProcesser implements RequestProcesser {
                         VideoPlayHelper.playUrl(this.context, url, 0, false);
                     }
                 }
-                return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, "{\"ok\":true}");
+                return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                        "{\"ok\":true,\"engine\":\"" + engineUsed + "\"}");
             }
             case "/playStop":
                 // 停止新播放器（通过广播）

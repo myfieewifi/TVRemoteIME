@@ -25,7 +25,8 @@ public class AppConfig {
     private static final String KEY_PLAYER_ENGINE = "player_engine";
 
     // 默认值
-    public static final int DEFAULT_PORT = 9978;
+    // 9976：避开影视仓等常用 TV 工具默认占用的 9978 端口（旧版默认 9978 会与其冲突）
+    public static final int DEFAULT_PORT = 9976;
     public static final float DEFAULT_TOUCH_SENSITIVITY = 1.2f;
     /** 默认播放器 UA：懒加载，避免类初始化时 Environment.context 尚未赋值导致 NPE */
     public static String getDefaultPlayerUserAgent() {
@@ -41,6 +42,21 @@ public class AppConfig {
     public static final String ENGINE_EXO = "exo";
     public static final String ENGINE_IJK = "ijk";
     public static final String DEFAULT_PLAYER_ENGINE = ENGINE_EXO;
+
+    /**
+     * 当前安装包是否具备 IJKPlayer 内核（其 so 仅有 armeabi-v7a 版本，
+     * arm64-v8a 包不含）。用于 Web 端禁用 IJK 选项并给出明确提示，
+     * 避免"切换成功"实际却无法使用。
+     */
+    public static boolean isIjkAvailable() {
+        try {
+            String[] abis = android.os.Build.SUPPORTED_ABIS;
+            for (String abi : abis) {
+                if ("armeabi-v7a".equals(abi) || "armeabi".equals(abi)) return true;
+            }
+        } catch (Throwable ignore) {}
+        return false;
+    }
 
     private final SharedPreferences sp;
 
@@ -153,6 +169,7 @@ public class AppConfig {
             json.put("defaultPlayerUserAgent", getDefaultPlayerUserAgent());
             json.put("playerEngine", getPlayerEngine());
             json.put("defaultPlayerEngine", DEFAULT_PLAYER_ENGINE);
+            json.put("ijkAvailable", isIjkAvailable());
         } catch (JSONException ignored) {}
         return json;
     }

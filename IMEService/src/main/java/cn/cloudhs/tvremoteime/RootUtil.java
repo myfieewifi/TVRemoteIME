@@ -15,6 +15,26 @@ import java.io.InputStreamReader;
 public class RootUtil {
     private static final String TAG = "RootUtil";
 
+    // root 可用性探测结果缓存（su 探测有开销且可能弹授权框，不能在 HTTP 线程上反复执行）
+    private static volatile Boolean sRootAvailable = null;
+    private static volatile long sRootCheckedAt = 0;
+    private static final long ROOT_CACHE_MS = 60_000L;
+
+    /**
+     * 带 60 秒缓存的 root 探测，供 HTTP /api/status 等高频路径使用
+     */
+    public static boolean isRootAvailableCached() {
+        long now = System.currentTimeMillis();
+        Boolean cached = sRootAvailable;
+        if (cached != null && now - sRootCheckedAt < ROOT_CACHE_MS) {
+            return cached;
+        }
+        boolean available = isRootAvailable();
+        sRootAvailable = available;
+        sRootCheckedAt = now;
+        return available;
+    }
+
     /**
      * 检查设备是否已 root（不是请求权限，只是"能拿到 su"）
      */

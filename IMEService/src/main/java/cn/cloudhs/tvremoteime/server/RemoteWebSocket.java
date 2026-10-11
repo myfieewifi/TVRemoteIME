@@ -35,6 +35,12 @@ public class RemoteWebSocket extends NanoWSD.WebSocket {
     private TouchInjector getTouch() {
         if (touchInjector == null) {
             touchInjector = new TouchInjector(server.getServerContext());
+            // 使用持久化的灵敏度（与 /touch HTTP 路径行为一致）
+            try {
+                float sens = cn.cloudhs.tvremoteime.AppConfig
+                        .getInstance(server.getServerContext()).getTouchSensitivity();
+                touchInjector.setSensitivity(sens);
+            } catch (Throwable ignored) {}
         }
         return touchInjector;
     }
@@ -81,6 +87,16 @@ public class RemoteWebSocket extends NanoWSD.WebSocket {
                     String act = j.optString("action", "move");
                     float dx = (float) j.optDouble("dx", 0);
                     float dy = (float) j.optDouble("dy", 0);
+                    // 前端把当前灵敏度随事件带上，即时生效（与 HTTP 路径的 sens 参数一致）
+                    if (j.has("sens")) {
+                        try { getTouch().setSensitivity((float) j.optDouble("sens", 1.6)); } catch (Throwable ignored) {}
+                    }
+                    if ("hide".equals(act)) {
+                        // 前端切换功能区/页面隐藏时请求隐藏光标浮层
+                        getTouch().hideCursor();
+                        sendSafe("{\"type\":\"ack\",\"ok\":true,\"available\":" + getTouch().isAvailable() + "}");
+                        break;
+                    }
                     boolean ok = getTouch().sendTouch(act, dx, dy);
                     sendSafe("{\"type\":\"ack\",\"ok\":" + ok + ",\"available\":" + getTouch().isAvailable() + "}");
                     break;

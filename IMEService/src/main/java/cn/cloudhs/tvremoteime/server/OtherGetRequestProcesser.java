@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
 import android.os.StatFs;
+import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 import cn.cloudhs.tvremoteime.AppConfig;
 import cn.cloudhs.tvremoteime.AppPackagesHelper;
 import cn.cloudhs.tvremoteime.AutoUpdateManager;
+import cn.cloudhs.tvremoteime.RootUtil;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
@@ -34,6 +36,7 @@ public class OtherGetRequestProcesser implements RequestProcesser {
             case "/sdcard_stat":
             case "/api/version":
             case "/api/config":
+            case "/api/status":
                 return true;
         }
         return false;
@@ -54,6 +57,8 @@ public class OtherGetRequestProcesser implements RequestProcesser {
                 JSONObject info = AutoUpdateManager.getCachedRemoteVersion(context);
                 return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
                         info.toString());
+            case "/api/status":
+                return getStatusResponse();
             case "/api/config":
                 JSONObject cfg = AppConfig.getInstance(context).toJson();
                 return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
@@ -64,6 +69,38 @@ public class OtherGetRequestProcesser implements RequestProcesser {
                 return RemoteServer.createPlainTextResponse(
                         NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
+    }
+
+    /**
+     * /api/status：电视端能力诊断（前端据此显示可操作的状态提示）。
+     * - imeEnabled / imeDefault：远程文字输入能否生效的关键
+     * - overlayGranted：触摸板光标浮层能否显示的关键
+     * - rootAvailable / adbConnected：注入与 ROOT 卸载的兜底通道
+     * - ijkAvailable：本安装包是否含 IJKPlayer 内核
+     */
+    private NanoHTTPD.Response getStatusResponse() {
+        JSONObject st = new JSONObject();
+        try {
+            // 注意：本文件 import 的 Environment 是 android.os.Environment，
+            // 应用自身的 Environment 工具类必须用全限定名
+            st.put("imeEnabled", cn.cloudhs.tvremoteime.Environment.isEnableIME(context));
+            st.put("imeDefault", cn.cloudhs.tvremoteime.Environment.isDefaultIME(context));
+            boolean overlay;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                overlay = android.provider.Settings.canDrawOverlays(context);
+            } else {
+                overlay = true;
+            }
+            st.put("overlayGranted", overlay);
+            st.put("rootAvailable", RootUtil.isRootAvailableCached());
+            st.put("ijkAvailable", AppConfig.isIjkAvailable());
+            st.put("adbConnected",
+                    cn.cloudhs.tvremoteime.adb.AdbHelper.getInstance() != null
+                            && cn.cloudhs.tvremoteime.adb.AdbHelper.getInstance().isRunning());
+        } catch (Exception e) {
+            Log.w("TVRemoteIME", "build status failed", e);
+        }
+        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, st.toString());
     }
 
     private NanoHTTPD.Response getSDCardStatResponse() {

@@ -68,16 +68,25 @@ public class AutoUpdateManager {
     public static JSONObject getCachedRemoteVersion(Context context) {
         if (sCachedRemoteVersion == null ||
                 System.currentTimeMillis() - sLastFetchTime > CACHE_TTL_MS) {
-            // 同步拉一次（短超时，不能阻塞主线程）
-            try {
-                String data = HTTPGet.readString(VERSION_URL);
-                if (!TextUtils.isEmpty(data)) {
-                    sCachedRemoteVersion = new JSONObject(data);
-                    sLastFetchTime = System.currentTimeMillis();
+            // 只返回缓存、后台线程刷新：避免国内电视访问 GitHub 被丢包时把
+            // HTTP 工作线程同步阻塞十几秒，前端"检查更新"长时间无响应。
+            // 先把时间戳前移，防止并发请求触发多次刷新。
+            sLastFetchTime = System.currentTimeMillis();
+            final Context appCtx = context.getApplicationContext();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String data = HTTPGet.readString(VERSION_URL);
+                        if (!TextUtils.isEmpty(data)) {
+                            sCachedRemoteVersion = new JSONObject(data);
+                            sLastFetchTime = System.currentTimeMillis();
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "background refresh version failed", e);
+                    }
                 }
-            } catch (Exception e) {
-                Log.w(TAG, "getCachedRemoteVersion failed", e);
-            }
+            }).start();
         }
         // 返回给前端的对象：合并本地版本信息，前端不关心缓存状态
         JSONObject result = new JSONObject();

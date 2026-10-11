@@ -144,7 +144,7 @@ public class AppPackagesHelper {
         return  array.toString();
     }
 
-    private static ApplicationInfo getApplicationInfo(String packageName, Context context){
+    public static ApplicationInfo getApplicationInfo(String packageName, Context context){
         ApplicationInfo applicationInfo = null;
         if(!packageName.isEmpty()) {
             PackageManager pm = context.getPackageManager();
@@ -193,6 +193,33 @@ public class AppPackagesHelper {
         }catch (Exception ex){
             Log.e(IMEService.TAG, String.format("删除应用包[%s]出错", packageName), ex);
         }
+    }
+
+    /**
+     * ROOT 静默卸载（系统应用/用户应用均可）。
+     * - 系统应用：pm uninstall -k --user 0，仅对当前用户卸载（APK 在 /system 分区删不掉，
+     *   此法最稳妥且可用 cmd package install-existing 恢复）
+     * - 用户应用：pm uninstall <pkg>，完整卸载
+     * 均需 su 授权。
+     */
+    public static boolean uninstallPackageAsRoot(final String packageName, boolean isSystemApp){
+        try {
+            String cmd = isSystemApp
+                    ? "pm uninstall -k --user 0 " + packageName
+                    : "pm uninstall " + packageName;
+            boolean ok = RootUtil.execAsRoot(cmd);
+            Log.i(IMEService.TAG, String.format("ROOT 卸载应用包[%s] %s", packageName, ok ? "成功" : "失败"));
+            return ok;
+        } catch (Exception ex){
+            Log.e(IMEService.TAG, String.format("ROOT 卸载应用包[%s]出错", packageName), ex);
+            return false;
+        }
+    }
+
+    /** 目标应用是否为系统应用（ROOT 卸载系统应用的前提判断用） */
+    public static boolean isSystemPackage(final String packageName, final Context context){
+        ApplicationInfo info = getApplicationInfo(packageName, context);
+        return info != null && (info.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
     }
 
     public static void runPackage(final String packageName, final Context context){

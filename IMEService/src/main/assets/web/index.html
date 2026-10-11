@@ -20,8 +20,20 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;
 .update-btn.has{background:linear-gradient(135deg,#ff9966,#ff5e62);animation:pulse 1.4s infinite;}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,94,98,.5);}50%{box-shadow:0 0 0 8px rgba(255,94,98,0);}}
 .status{display:inline-flex;align-items:center;gap:5px;font-size:12px;opacity:.85;}
-.dot{width:7px;height:7px;border-radius:50%;background:#ff5555;box-shadow:0 0 6px #ff5555;}
+.dot{width:7px;height:7px;border-radius:50%;background:#ff5555;box-shadow:0 0 6px #ff5555;flex-shrink:0;}
 .dot.ok{background:#55e58a;box-shadow:0 0 6px #55e58a;}
+/* 注意：遥控面板的 OK 大按钮不能用 .ok 类名——它会把状态圆点
+   <span class="dot ok"> 的 7px 覆盖成 86px（同特异性、后定义者胜），
+   造成“连接后变成巨大绿圈”的错乱。 */
+.banner{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.banner.warn{background:rgba(255,159,10,.16);color:#ffd27a;border:1px solid rgba(255,159,10,.4);}
+.banner.err{background:rgba(255,94,98,.16);color:#ffb3b5;border:1px solid rgba(255,94,98,.4);}
+.banner.good{background:rgba(85,229,138,.12);color:#9df0bd;border:1px solid rgba(85,229,138,.35);}
+.banner button{flex-shrink:0;padding:7px 10px;border-radius:8px;border:none;font-size:12px;color:#fff;
+  background:linear-gradient(135deg,#5e7bff,#a35bff);}
+.banner button.ghost{background:rgba(255,255,255,.12);}
+.banner .txt{flex:1;min-width:0;}
 /* Tab */
 .tabs{display:flex;padding:4px 10px 8px;gap:6px;flex-shrink:0;overflow-x:auto;}
 .tab{padding:9px 10px;text-align:center;border-radius:12px;font-size:13px;font-weight:500;white-space:nowrap;min-width:62px;
@@ -48,10 +60,10 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;
 .arrow.left:active{transform:translateY(-50%) scale(.92);}
 .arrow.right{top:50%;right:6px;transform:translateY(-50%);}
 .arrow.right:active{transform:translateY(-50%) scale(.92);}
-.ok{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;
+.ok-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;
   background:linear-gradient(145deg,#ffffff 0%,#d7defd 100%);color:#4a3aa0;display:flex;align-items:center;justify-content:center;
   font-size:18px;font-weight:700;letter-spacing:2px;box-shadow:0 6px 18px rgba(94,90,255,.35),inset 0 -3px 0 rgba(0,0,0,.08);}
-.ok:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 3px 8px rgba(94,90,255,.25);}
+.ok-btn:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 3px 8px rgba(94,90,255,.25);}
 .func-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px;width:100%;max-width:360px;}
 .func-btn{padding:13px 0;border-radius:12px;font-size:13px;text-align:center;
   background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
@@ -159,7 +171,7 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         <div class="arrow down" data-key="KEYCODE_DPAD_DOWN">▼</div>
         <div class="arrow left" data-key="KEYCODE_DPAD_LEFT">◀</div>
         <div class="arrow right" data-key="KEYCODE_DPAD_RIGHT">▶</div>
-        <div class="ok" data-key="KEYCODE_DPAD_CENTER">OK</div>
+        <div class="ok-btn" data-key="KEYCODE_DPAD_CENTER">OK</div>
       </div>
     </div>
     <div style="display:flex;justify-content:center;">
@@ -181,6 +193,10 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
 
   <!-- 触摸板 -->
   <div class="panel" id="p-touch">
+    <div class="banner warn" id="ovBanner" style="display:none;">
+      <div class="txt">电视端未授予「显示在其他应用上层」权限，滑动时看不到光标，只能盲点。</div>
+      <button id="btnOvGrant">去授权</button>
+    </div>
     <div class="touchpad" id="touchpad"></div>
     <div class="touch-tools">
       <div class="func-btn" id="t-click">👆 单击</div>
@@ -200,7 +216,7 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   <div class="panel" id="p-app">
     <div class="sys-toggle">
       <button id="btnSysToggle">显示系统应用</button>
-      <span style="font-size:11px;opacity:.7;">点击图标启动应用，长按可卸载</span>
+      <span style="font-size:11px;opacity:.7;">点击图标启动 · 长按卸载（ROOT 静默卸载含系统应用）</span>
     </div>
     <div class="app-grid" id="appGrid"><div class="empty" style="grid-column:1/-1;">加载中…</div></div>
   </div>
@@ -209,11 +225,16 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   <div class="panel" id="p-file">
     <div class="path-bar" id="pathBar">/</div>
     <div class="file-list" id="fileList"><div class="empty" style="padding:40px 0;">加载中…</div></div>
-    <div class="tips">💡 点击文件夹进入；视频/音频文件可直接投屏播放；删除操作不可恢复，谨慎操作。</div>
+    <div class="cast-card" style="margin-top:12px;">
+      <label>上传文件到电视（保存在应用目录，视频可直接播放）</label>
+      <input type="file" id="castFile" style="color:#fff;font-size:13px;"/>
+    </div>
+    <div class="tips">💡 点击文件夹进入；视频/音频文件可直接投屏播放；文件和文件夹均可删除，操作不可恢复，谨慎操作。</div>
   </div>
 
   <!-- 输入 -->
   <div class="panel" id="p-input">
+    <div class="banner err" id="imeBanner" style="display:none;"></div>
     <div class="input-wrap">
       <textarea id="txt" placeholder="在这里输入文字，点击发送即可一键输入到电视"></textarea>
       <div class="input-btns">
@@ -245,10 +266,6 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         <button id="btn-play">▶ 播放</button>
         <button class="gray" id="btn-stop">⏹ 停止</button>
       </div>
-    </div>
-    <div class="cast-card">
-      <label>本地文件上传</label>
-      <input type="file" id="castFile" accept="video/*" style="color:#fff;font-size:13px;"/>
     </div>
     <div class="cast-card">
       <label>播放器内核</label>
@@ -293,6 +310,7 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
       $('#p-'+t.dataset.tab).classList.add('active');
       if(t.dataset.tab==='app') loadApps(showSysApp);
       if(t.dataset.tab==='file' && !fileLoaded) loadFiles('/');
+      if(t.dataset.tab==='input'||t.dataset.tab==='touch') refreshStatusInfo();
     });
   });
   // 页面切到后台时同样隐藏光标，避免残留
@@ -302,6 +320,38 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   const toastEl=$('#toast');let toastTimer=null;
   function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600);}
   function vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms||12);}
+  function postJson(url){return fetch(url,{method:'POST'}).then(r=>r.json());}
+
+  // ===== 状态诊断（输入法 / 悬浮窗 / ROOT）=====
+  // 远程输入、触摸光标失效多因电视端未设默认输入法 / 未授予悬浮窗权限，
+  // 这里把状态摆到对应面板上并给出可执行的操作按钮
+  function refreshStatusInfo(){
+    fetch('/api/status').then(r=>r.json()).then(st=>{
+      const ib=$('#imeBanner');
+      if(ib){
+        if(!st.imeEnabled||!st.imeDefault){
+          ib.className='banner '+(st.imeEnabled?'warn':'err');
+          ib.innerHTML='<div class="txt">'+
+            (st.imeEnabled?'输入法已启用但<b>未设为默认</b>，远程输入无法生效。':'输入法<b>尚未启用</b>，远程输入无法生效。')+
+            '</div>'+
+            (st.rootAvailable?'<button id="btnRootSet">ROOT 设默认</button>':'')+
+            '<button id="btnImeSet" class="ghost">去设置</button>';
+          ib.style.display='flex';
+          const bRoot=$('#btnRootSet');
+          if(bRoot)bRoot.addEventListener('click',()=>{postJson('/rootSetIme').then(r=>{toast(r.msg||'操作完成');if(r.ok)setTimeout(refreshStatusInfo,800);}).catch(()=>toast('请求失败'));vibrate();});
+          $('#btnImeSet').addEventListener('click',()=>{postJson('/imeSettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
+        }else{
+          ib.className='banner good';
+          ib.innerHTML='<div class="txt">✓ 输入法已启用并设为默认，远程输入可直接生效</div>';
+          ib.style.display='flex';
+        }
+      }
+      const ob=$('#ovBanner');
+      if(ob)ob.style.display=st.overlayGranted?'none':'flex';
+    }).catch(()=>{});
+  }
+  $('#btnOvGrant').addEventListener('click',()=>{postJson('/overlaySettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
+  setTimeout(refreshStatusInfo,300);
 
   // ===== WebSocket =====
   let ws=null,retry=0,connected=false;
@@ -313,13 +363,27 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
     ws.onopen=()=>{connected=true;retry=0;setStatus(true,'已连接');};
     ws.onclose=()=>{connected=false;setStatus(false,'已断开');retryLater();};
     ws.onerror=()=>{try{ws.close();}catch(e){}};
-    ws.onmessage=()=>{};
+    // 心跳：电视 Wi-Fi 空闲时若无流量，TCP 会被系统/路由静默掐断，
+    // 造成状态在“已连接/未连接”间反复横跳。每 12s 一 ping 保活。
+    ws.onmessage=e=>{
+      try{
+        const m=JSON.parse(e.data);
+        if(m.type==='textFail')toast(m.msg||'电视端暂无输入焦点');
+        else if(m.type==='ack'&&m.available===false)toast('电视端不支持触摸注入');
+      }catch(_){}
+    };
   }
   function retryLater(){retry++;setTimeout(connect,Math.min(1000*Math.pow(1.5,Math.min(retry,6)),10000));}
   connect();
+  setInterval(()=>{if(ws&&ws.readyState===1){try{ws.send('{"type":"ping"}');}catch(e){}}},12000);
 
   function send(o){
-    if(connected&&ws.readyState===1){try{ws.send(JSON.stringify(o));return;}catch(e){}}
+    if(connected&&ws.readyState===1){
+      try{
+        if(o.type==='touch')o.sens=parseFloat($('#sens').value)||1.6;
+        ws.send(JSON.stringify(o));return;
+      }catch(e){}
+    }
     // 回退 HTTP
     const b=new URLSearchParams();
     if(o.type==='key'||o.type==='keydown'||o.type==='keyup'){b.set('code',o.code);fetch('/'+o.type,{method:'POST',body:b});}
@@ -328,8 +392,7 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
       b.set('action',o.action||'move');
       if(o.dx!=null)b.set('dx',o.dx);if(o.dy!=null)b.set('dy',o.dy);
       b.set('sens',$('#sens').value);fetch('/touch',{method:'POST',body:b});
-    }
-  }
+    }  }
   function pressKey(code){send({type:'key',code});vibrate();}
 
   // ===== 按键 =====
@@ -421,24 +484,35 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
           const it=document.createElement('div');it.className='app-item';
           const label = (app.lable||app.name||app.packageName||'').toString();
           it.innerHTML=`<img src="/appicon/${encodeURIComponent(app.packageName)}" alt="icon" onerror="this.style.display='none'"/><div class="name">${label.replace(/</g,'&lt;')}</div>`;
-          let pressTimer=null;
-          it.addEventListener('click',()=>{
-            if(pressTimer)clearTimeout(pressTimer);
-            if(it.dataset.pressed){delete it.dataset.pressed;return;}
+          // 旧实现依赖 click 事件，但 touchend 后 pressed 标志 50ms 后才清除，
+          // click 总是先撞上 pressed=true 而直接 return —— 任何设备上点击图标都不会启动。
+          // 改为纯 touchstart/touchend（鼠标为 mousedown/mouseup）判定：短按=启动，长按=卸载。
+          let pressTimer=null,longFired=false;
+          const runApp=()=>{
             const bb=new URLSearchParams();bb.set('packageName',app.packageName);
             fetch('/run',{method:'POST',body:bb}).then(()=>toast('启动：'+label)).catch(()=>toast('启动失败'));
             vibrate();
-          });
-          const start=e=>{e.preventDefault();it.dataset.pressed='1';pressTimer=setTimeout(()=>{
-            if(confirm('卸载应用：'+label+' ?')){
-              const bb=new URLSearchParams();bb.set('packageName',app.packageName);
-              fetch('/uninstall',{method:'POST',body:bb}).then(()=>{toast('已发送卸载请求');setTimeout(()=>loadApps(showSys),800);});
-            }
-            delete it.dataset.pressed;
-          },600);};
-          const end=()=>{if(pressTimer)clearTimeout(pressTimer);setTimeout(()=>{delete it.dataset.pressed;},50);};
-          it.addEventListener('touchstart',start,{passive:false});it.addEventListener('touchend',end);it.addEventListener('touchcancel',end);
-          it.addEventListener('mousedown',start);it.addEventListener('mouseup',end);it.addEventListener('mouseleave',end);
+          };
+          const askUninstall=()=>{
+            if(!confirm('卸载应用：'+label+'？\nROOT 设备将静默卸载；无 ROOT 用户应用需在电视端遥控确认'))return;
+            const bb=new URLSearchParams();bb.set('packageName',app.packageName);
+            fetch('/uninstall',{method:'POST',body:bb}).then(r=>r.json()).then(r=>{
+              toast(r.msg||(r.ok?'已卸载':'卸载失败'));
+              setTimeout(()=>loadApps(showSys),1200);
+            }).catch(()=>toast('卸载请求失败'));
+            vibrate(20);
+          };
+          const start=e=>{if(e.cancelable)e.preventDefault();longFired=false;
+            pressTimer=setTimeout(()=>{pressTimer=null;longFired=true;askUninstall();},550);};
+          const end=e=>{if(e&&e.cancelable)e.preventDefault();
+            if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+            if(!longFired)runApp();};
+          it.addEventListener('touchstart',start,{passive:false});
+          it.addEventListener('touchend',end,{passive:false});
+          it.addEventListener('touchcancel',()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}});
+          it.addEventListener('mousedown',start);
+          it.addEventListener('mouseup',end);
+          it.addEventListener('mouseleave',()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}});
           grid.appendChild(it);
         });
         appLoaded=true;
@@ -466,6 +540,16 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         const it=document.createElement('div');it.className='file-item';
         it.innerHTML=`<div class="ico">📁</div><div class="meta"><div class="nm">${d.name.replace(/</g,'&lt;')}</div><div class="sz">文件夹</div></div>`;
         it.addEventListener('click',()=>{loadFiles(d.path==='/'?'':d.path);vibrate();});
+        // 文件夹也支持删除（后端 deleteFile 对目录递归清空后删除）
+        const delDir=document.createElement('div');delDir.className='op';
+        delDir.innerHTML='<button class="del">删除</button>';
+        delDir.querySelector('.del').addEventListener('click',e=>{e.stopPropagation();
+          if(confirm('删除文件夹：'+d.name+' 及其中全部内容？\n此操作不可恢复！')){
+            const b=new URLSearchParams();b.set('paths',d.fullPath);
+            fetch('/file/delete',{method:'POST',body:b}).then(()=>{toast('已删除');loadFiles(curPath);}).catch(()=>toast('删除失败'));
+          }
+        });
+        it.appendChild(delDir);
         list.appendChild(it);
       });
       (data.files||[]).forEach(f=>{
@@ -500,16 +584,27 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
     const u=$('#castUrl').value.trim();if(!u){toast('请输入视频地址');return;}
     const t=$('#castTitle').value.trim()||'投屏播放';
     const b=new URLSearchParams();b.set('playUrl',u);b.set('title',t);
-    fetch('/play',{method:'POST',body:b}).then(()=>toast('已发起播放')).catch(()=>toast('请求失败'));vibrate();
+    fetch('/play',{method:'POST',body:b}).then(r=>r.json()).then(r=>{
+      if(r&&r.engine==='exo'&&$('#playerEngine').value==='ijk')toast('IJK 内核不可用（当前安装包无 so），已用 ExoPlayer 播放');
+      else toast('已发起播放');
+    }).catch(()=>toast('请求失败'));vibrate();
   });
   $('#btn-stop').addEventListener('click',()=>{fetch('/playStop',{method:'POST'}).then(()=>toast('已停止'));vibrate();});
   $('#castFile').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);fd.append('path','/'+f.name);
     toast('上传中：'+f.name);
     fetch('/file/upload',{method:'POST',body:fd}).then(r=>r.text()).then(txt=>{
-      const m=txt.match(/(https?:\/\/[^\s"']+|\/file\/[^\s"']+)/);
-      if(m){const url=m[1].startsWith('http')?m[1]:location.origin+m[1];$('#castUrl').value=url;toast('上传成功');}
-      else toast('上传完成');
+      let ok=false,url='';
+      try{const j=JSON.parse(txt);ok=!!j.success;url=j.url||'';}catch(_){}
+      if(ok&&url){
+        $('#castUrl').value=location.origin+url;
+        toast('上传成功');
+        // 跳到上传所在目录，直接展示刚上传的文件（视频点「播放」即可投屏）
+        const dm=url.match(/^\/file\/download\/(.*)\/[^/]+$/);
+        if(dm){fileLoaded=true;loadFiles('/'+dm[1].replace(/\/+$/,''));}
+      }else{
+        toast(ok?'上传完成（但未取得播放地址）':'上传失败：电视端写入受限');
+      }
     }).catch(()=>toast('上传失败'));
   });
 
@@ -546,17 +641,33 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   setTimeout(()=>checkUpdate(false),1500);
 
   // ===== 配置：UA / 内核 =====
+  let ijkAvailable=true;
   function loadConfig(){
     fetch('/api/config').then(r=>r.json()).then(cfg=>{
       $('#playerUA').value=cfg.playerUserAgent||'';
       $('#playerUA').placeholder='默认：'+(cfg.defaultPlayerUserAgent||'TVRemoteIME/1.0');
-      $('#playerEngine').value=cfg.playerEngine||'exo';
+      ijkAvailable=cfg.ijkAvailable!==false;
+      const sel=$('#playerEngine');
+      const ijkOpt=sel.querySelector('option[value=ijk]');
+      if(ijkOpt){
+        ijkOpt.disabled=!ijkAvailable;
+        ijkOpt.textContent=ijkAvailable
+          ?'IJKPlayer（软解兜底 · 仅 32 位包）'
+          :'IJKPlayer（不可用：当前为 arm64 安装包）';
+      }
+      if(!ijkAvailable&&cfg.playerEngine==='ijk')sel.value='exo';
+      else sel.value=cfg.playerEngine||'exo';
     }).catch(()=>{});
   }
   $('#btn-save-ua').addEventListener('click',()=>{
-    const ua=$('#playerUA').value.trim(),engine=$('#playerEngine').value;
+    const ua=$('#playerUA').value.trim();
+    let engine=$('#playerEngine').value;
+    if(engine==='ijk'&&!ijkAvailable){toast('当前安装包不含 IJK 内核，保持 ExoPlayer');engine='exo';$('#playerEngine').value='exo';}
     fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerUserAgent:ua,playerEngine:engine})})
-      .then(r=>r.json()).then(()=>{
+      .then(r=>r.json()).then(r=>{
+        // 回读校验：保存的内核应与所选一致，防止"提示成功实际没存上"
+        const saved=(r&&r.config&&r.config.playerEngine)||'';
+        if(saved!==engine){toast('保存未生效，请重试');loadConfig();return;}
         toast(engine==='ijk'?'已切换为 IJKPlayer 内核':'已切换为 ExoPlayer 内核');
         loadConfig();
         vibrate();
