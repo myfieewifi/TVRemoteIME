@@ -1,7 +1,7 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0.0",
-  "message": "云视远程输入法 v1.0.0 首发版本\n\n· 全新蓝紫风格 Web UI，手机/电脑均可控制\n· 投屏播放器内核升级为 ExoPlayer 2.19.1，支持 MP4/MKV/HLS/DASH/RTSP\n· 新增播放器内核切换：ExoPlayer（硬解省资源）/ IJKPlayer（软解兼容兜底）\n· 支持自定义播放器 User-Agent，适配需要 UA 校验的视频源\n· 按 CPU 架构分包发布（armeabi-v7a / arm64-v8a / universal），单包体积更小\n· 新增触摸板控制，支持滑动/点击/长按/滚轮\n· 修复方向键在弹框/Dialog 场景失效的问题\n· 播放器独立进程运行，退出即回收内存；输入法常驻内存优化\n· 支持 GitHub Release 在线更新，每个新版本只提示一次\n· 配置持久化（端口、UA、内核、灵敏度、更新开关等）",
-  "installAPK": "https://github.com/myfieewifi/TVRemoteIME/releases/download/v1.0.0/TVRemoteIME-v1.0.0-universal.apk",
+  "versionCode": 2,
+  "versionName": "1.0.1",
+  "message": "云视远程输入法 v1.0.1 更新\n\n· 修复遥控按键在其它 App 内无效的问题：ADB 通道已连接时全局注入（原项目方案），并新增 ADB 状态提示与一键重连\n· 修复触摸板光标可见但点击无效的问题：点击/长按/滚动自动降级 ADB input tap/swipe 兜底\n· 修复远程文字输入无效果的问题：不再静默丢弃，电视端给出明确引导\n· 修复 IJK 内核播放即闪退（清单漏声明 MediaPlayerService）\n· 修复连续推送两个视频时同时播放：现在自动切换到新视频\n· 投屏播放器控制条（快进/快退/暂停/进度条）改为常显，移除易误触的关闭/截图按钮，返回键退出\n· 遥控面板按键重设计：块状+框线、按压变色；移除无效的搜索按钮\n· 修复连接状态反复横跳：WebSocket 心跳保活\n· 默认端口 9978 改为 9976，避免与影视仓等工具冲突\n· 应用页：点击启动修复、长按卸载（ROOT 可静默卸载系统应用）\n· 文件页：文件夹可删除、上传功能移入文件页\n· 状态圆点样式错乱、上传接播、IJK 不可用提示等 20+ 项修复",
+  "installAPK": "https://github.com/myfieewifi/TVRemoteIME/releases/download/v1.0.1/TVRemoteIME-v1.0.1-universal.apk",
   "forced": false
 }
