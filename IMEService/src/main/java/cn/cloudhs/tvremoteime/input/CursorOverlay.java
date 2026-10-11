@@ -57,10 +57,6 @@ public class CursorOverlay {
     private int mScreenW = 0;
     private int mScreenH = 0;
 
-    public CursorOverlay(Context context) {
-        this.mCtx = context.getApplicationContext();
-    }
-
     /** 是否具备绘制悬浮光标的权限 */
     public boolean canShow() {
         try {

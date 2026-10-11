@@ -12,6 +12,7 @@ import cn.cloudhs.tvremoteime.AppConfig;
 import cn.cloudhs.tvremoteime.AppPackagesHelper;
 import cn.cloudhs.tvremoteime.IMEService;
 import cn.cloudhs.tvremoteime.VideoPlayHelper;
+import cn.cloudhs.tvremoteime.player.DlnaPlayBridgeService;
 import cn.cloudhs.tvremoteime.player.ExoPlayerActivity;
 import fi.iki.elonen.NanoHTTPD;
 import player.settings.GlobalSettings;
