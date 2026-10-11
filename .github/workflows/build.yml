@@ -6,6 +6,11 @@ on:
       - 'v*'           # 推送 v* 标签时自动触发构建并发布 Release
   workflow_dispatch:   # 支持在 Actions 页面手动触发
 
+# GITHUB_TOKEN 默认只读，创建 Release/上传资产需要 contents 写权限，
+# 否则 Create Release 步骤报 "Resource not accessible by integration"
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK
