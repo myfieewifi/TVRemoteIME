@@ -46,7 +46,7 @@ public class DLNARendererService extends Service {
 
             try {
                 String dlnaName = getString(R.string.app_name);
-                String suffix = cn.cloudhs.tvremoteime.AppConfig.getInstance(DLNARendererService.this).getDlnaNameSuffix();
+                String suffix = cn.cloudhs.tvremoteime.AppConfig.getInstance(DLNARendererService.this).getDLNANameSuffix();
                 if(!TextUtils.isEmpty(suffix)) dlnaName += "(" + suffix + ")";
 
                 if(mMediaRenderer != null){

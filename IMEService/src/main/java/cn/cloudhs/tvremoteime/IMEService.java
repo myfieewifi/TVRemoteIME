@@ -423,7 +423,7 @@ public class IMEService extends InputMethodService implements View.OnClickListen
             Log.i(TAG, "远程输入服务已停止！");
 			mServer.stop();
 		}
-		DLNAUtils.stopDLNAService();
+		DLNAUtils.stopDLNAService(this);
 		AdbHelper.stopService();
 		Environment.toastInHandler(this, getString(R.string.app_name) + "服务已停止");
     	super.onDestroy();    	

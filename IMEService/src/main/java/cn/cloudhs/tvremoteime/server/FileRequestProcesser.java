@@ -173,10 +173,25 @@ public class FileRequestProcesser  implements RequestProcesser {
             // 同时去掉路径分隔符，防止目录穿越。
             String safeName = new File(uploadFileName).getName().replaceAll("[/\\\\]", "");
             if (!safeName.isEmpty()) {
-                File saveFilename = new File(Environment.getExternalStorageDirectory(), safeName);
-                File localFile = new File(localFilename);
-                r = localFile.renameTo(saveFilename);
-                if (r) downloadUrl = "/file/download/" + safeName;
+                // targetSdk 33 无 requestLegacyExternalStorage / MANAGE_EXTERNAL_STORAGE，
+                // Environment.getExternalStorageDirectory() 根目录在 Android 11+ 不可写。
+                // 改用应用专属外部存储 getExternalFilesDir，无需权限即可写；
+                // 它仍在 externalStorage 之下，/file/download 用相对路径可达。
+                File appFilesDir = context.getExternalFilesDir(null);
+                if (appFilesDir != null) {
+                    File saveFilename = new File(appFilesDir, safeName);
+                    File localFile = new File(localFilename);
+                    r = localFile.renameTo(saveFilename);
+                    if (r) {
+                        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
+                        String abs = saveFilename.getAbsolutePath();
+                        if (abs.startsWith(root)) {
+                            String rel = abs.substring(root.length());
+                            if (!rel.startsWith("/")) rel = "/" + rel;
+                            downloadUrl = "/file/download" + rel;
+                        }
+                    }
+                }
             }
         }
         // 前端正则 /(https?:\/\/[^\s"']+|\/file\/[^\s"']+)/ 从响应里提取播放地址填入 castUrl，

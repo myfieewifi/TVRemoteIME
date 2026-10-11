@@ -17,7 +17,6 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
@@ -45,13 +44,11 @@
         </service>
 
         <!-- DLNA 渲染器服务（DMR）：向局域网注册 UPnP 设备，供手机视频 APP 搜索并投屏 -->
+        <!-- foregroundServiceType 不声明：targetSdk 33 不强制；specialUse 是 API 34 才有，
+             compileSdk 33 下 AAPT2 会拒绝该枚举值导致打包失败。服务 onCreate 内会 startForeground。 -->
         <service
             android:name=".upnp.DLNARendererService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="dlna cast renderer"/>
-        </service>
+            android:exported="false" />
 
         <!-- DLNA 播放桥接服务：DroidDLNA 收到 SetAVTransportURI 后启动它拉起播放器 -->
         <service
@@ -119,11 +116,7 @@
         <!-- 前台守护服务：常驻通知，降低被系统杀后台概率，定期巡检拉起输入法服务 -->
         <service
             android:name=".service.ForegroundGuardService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="remote input method guard"/>
-        </service>
+            android:exported="false" />
 
         <activity android:name=".widget.ScreenShotActivity" android:exported="false"/>
 

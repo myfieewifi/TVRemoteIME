@@ -188,15 +188,26 @@ public class ExoPlayerActivity extends Activity {
 
         hideControlsTask = () -> showControls(false);
 
+        // 两个 Receiver 分别 try-catch + 各自加 flag：targetSdk 33 下 registerReceiver 不带
+        // RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED 会抛 SecurityException；若共用一个 try，
+        // stopReceiver 失败会连带 dlnaCtrlReceiver 也注册不上（网页停止 + DLNA 控制全断）。
+        // 两个广播都 setPackage(本包)，同包跨进程投递，用 RECEIVER_NOT_EXPORTED 即可收到。
         try {
-            registerReceiver(stopReceiver, new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY"));
+            IntentFilter stopFilter = new IntentFilter("cn.cloudhs.tvremoteime.ACTION_STOP_PLAY");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(stopReceiver, stopFilter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(stopReceiver, stopFilter);
+            }
+        } catch (Exception e) { Log.e(TAG, "注册停止广播失败", e); }
+        try {
             IntentFilter dlnaFilter = new IntentFilter(DlnaPlayBridgeService.ACTION_DLNA_CTRL);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(dlnaCtrlReceiver, dlnaFilter, Context.RECEIVER_EXPORTED);
+                registerReceiver(dlnaCtrlReceiver, dlnaFilter, Context.RECEIVER_NOT_EXPORTED);
             } else {
                 registerReceiver(dlnaCtrlReceiver, dlnaFilter);
             }
-        } catch (Exception e) { Log.e(TAG, "注册广播失败", e); }
+        } catch (Exception e) { Log.e(TAG, "注册DLNA控制广播失败", e); }
 
         preparePlayer();
         // DLNA 投屏不自动显示控制条，用户按键再显示

@@ -1,5 +1,8 @@
 package cn.cloudhs.tvremoteime.player;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
@@ -7,6 +10,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import cn.cloudhs.tvremoteime.AppConfig;
+import cn.cloudhs.tvremoteime.R;
 
 /**
  * 云视远程输入法 - DLNA 播放桥接服务
@@ -20,6 +24,8 @@ import cn.cloudhs.tvremoteime.AppConfig;
  */
 public class DlnaPlayBridgeService extends Service {
     private static final String TAG = "DlnaPlayBridge";
+    private static final String CH_ID = "tvremote_dlna_bridge";
+    private static final int NOTI_ID = 0x7702;
 
     // 发给播放器进程的控制广播 action（ExoPlayerActivity 注册接收）
     public static final String ACTION_DLNA_CTRL = "cn.cloudhs.tvremoteime.DLNA_CTRL";
@@ -33,6 +39,10 @@ public class DlnaPlayBridgeService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 本服务由 DroidDLNA 模块用 startForegroundService 启动（投屏/控制指令），
+        // Android 8+ 必须在 5 秒内调用 startForeground，否则 ForegroundServiceDidNotStartInTimeException 崩溃。
+        // 本服务只是拉起播放器 / 转发控制指令后立即 stopSelf，故用最低优先级通知短暂占用前台。
+        startForegroundCompat();
         if (intent == null) {
             stopSelf(startId);
             return START_NOT_STICKY;
@@ -101,6 +111,34 @@ public class DlnaPlayBridgeService extends Service {
             Log.i(TAG, "DLNA 拉起播放器: " + uri);
         } catch (Throwable t) {
             Log.e(TAG, "拉起播放器失败", t);
+        }
+    }
+
+    /** 满足 startForegroundService 的 5 秒前台义务。最低优先级，stopSelf 后即取消。 */
+    @SuppressWarnings("deprecation")
+    private void startForegroundCompat() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (nm != null && nm.getNotificationChannel(CH_ID) == null) {
+                    NotificationChannel ch = new NotificationChannel(
+                            CH_ID, "DLNA投屏桥接", NotificationManager.IMPORTANCE_MIN);
+                    ch.setShowBadge(false);
+                    nm.createNotificationChannel(ch);
+                }
+            }
+            Notification.Builder nb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    ? new Notification.Builder(this, CH_ID)
+                    : new Notification.Builder(this);
+            Notification n = nb.setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText("投屏处理中")
+                    .setOngoing(true)
+                    .setPriority(Notification.PRIORITY_MIN)
+                    .build();
+            startForeground(NOTI_ID, n);
+        } catch (Throwable t) {
+            Log.e(TAG, "startForeground 失败", t);
         }
     }
 }

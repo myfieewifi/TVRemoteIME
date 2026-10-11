@@ -57,14 +57,12 @@ public class ForegroundGuardService extends Service {
     private void ensureIMEServiceRunning() {
         try {
             // 检查 IMEService 是否存活；不存活就启动
+            // 不用 startForegroundService：IMEService 不调 startForeground 会崩溃；
+            // 守护服务本身是前台服务，进程处于前台状态，startService 不受后台启动限制。
             if (!isServiceRunning(IMEService.class.getName())) {
                 Intent svc = new Intent();
                 svc.setComponent(new ComponentName(this, IMEService.class));
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(svc);
-                } else {
-                    startService(svc);
-                }
+                try { startService(svc); } catch (Throwable ignore) {}
             }
         } catch (Throwable ignore) {}
     }

@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
@@ -25,6 +27,9 @@ public class CursorOverlay {
     private static final String TAG = "CursorOverlay";
 
     private final Context mCtx;
+    // move/show/hide 由 NanoHTTPD 工作线程调用，但 WindowManager.addView 绑定调用线程的 Looper，
+    // 后续从其它线程 updateViewLayout 会抛 CalledFromWrongThreadException。统一切到主线程执行。
+    private final Handler mMain = new Handler(Looper.getMainLooper());
     private WindowManager mWm;
     private View mDot;
     private WindowManager.LayoutParams mLp;
@@ -54,6 +59,10 @@ public class CursorOverlay {
     }
 
     public void show() {
+        mMain.post(this::showOnMain);
+    }
+
+    private void showOnMain() {
         if (mAdded || !canShow()) return;
         try {
             mWm = (WindowManager) mCtx.getSystemService(Context.WINDOW_SERVICE);
@@ -105,9 +114,13 @@ public class CursorOverlay {
 
     /** 把光标移动到屏幕坐标 (x, y) */
     public void move(float x, float y) {
+        mMain.post(() -> moveOnMain(x, y));
+    }
+
+    private void moveOnMain(float x, float y) {
         try {
             if (canShow() && !mAdded) {
-                show();
+                showOnMain();
             }
             if (!mAdded || mWm == null || mDot == null) return;
             int px = (int) (x - mSizePx / 2f);
@@ -122,6 +135,10 @@ public class CursorOverlay {
     }
 
     public void hide() {
+        mMain.post(this::hideOnMain);
+    }
+
+    private void hideOnMain() {
         try {
             if (mAdded && mWm != null && mDot != null) {
                 mWm.removeView(mDot);

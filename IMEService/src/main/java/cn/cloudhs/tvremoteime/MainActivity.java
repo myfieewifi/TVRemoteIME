@@ -44,7 +44,7 @@ public class MainActivity extends android.app.Activity implements View.OnClickLi
         Environment.initToastHandler();
         setContentView(R.layout.activity_main);
 
-        qrCodeImage = (ImageView) findViewById(R.id.qrCode);
+        qrCodeImage = (ImageView) findViewById(R.id.ivQRCode);
         tvAddress = (TextView) findViewById(R.id.tvAddress);
         tvVersion = (TextView) findViewById(R.id.tvVersion);
         tvEnabledStatus = (TextView) findViewById(R.id.tvEnabledStatus);
@@ -178,10 +178,12 @@ public class MainActivity extends android.app.Activity implements View.OnClickLi
     }
 
     private void startAllServices() {
+        // IMEService 是 InputMethodService，不应被 startForegroundService 启动（它不调
+        // startForeground 会触发 ForegroundServiceDidNotStartInTimeException 崩溃）。
+        // 此处 Activity 在前台，startService 不受后台启动限制。
         Intent svc = new Intent();
         svc.setComponent(new ComponentName(this, IMEService.class));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(svc);
-        else startService(svc);
+        startService(svc);
 
         Intent guard = new Intent(this, cn.cloudhs.tvremoteime.service.ForegroundGuardService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(guard);

@@ -25,14 +25,10 @@ public class IMEServiceBroadCastReceiver extends BroadcastReceiver {
         Environment.context = context.getApplicationContext();
         if (ACTION_BOOT.equals(intent.getAction())
                 || MEDIA_MOUNTED.equals(intent.getAction())) {
-            // 启动输入法主服务
-            Intent svc = new Intent();
-            svc.setComponent(new ComponentName(context, IMEService.class));
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(svc);
-                else context.startService(svc);
-            } catch (Throwable ignore) {}
-            // 启动前台守护服务
+            // 仅启动前台守护服务：守护服务自身会调 startForeground（合规），再由它在前台状态下
+            // startService 拉起 IMEService。不直接 startForegroundService(IMEService)：
+            // IMEService 是 InputMethodService，不应成为前台服务，被 startForegroundService 启动
+            // 却不调 startForeground 会触发 ForegroundServiceDidNotStartInTimeException 崩溃。
             try {
                 Intent g = new Intent(context, ForegroundGuardService.class);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(g);
