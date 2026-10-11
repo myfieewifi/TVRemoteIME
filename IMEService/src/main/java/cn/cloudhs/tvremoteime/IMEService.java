@@ -182,14 +182,6 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 	@Override
 	public boolean onEvaluateFullscreenMode() { return false; }
 
-	private boolean isSendToAdbService(Object data){
-		if(AdbHelper.initService(getApplicationContext())){
-			AdbHelper.getInstance().sendData(data);
-			return true;
-		}
-		return false;
-	}
-
 	private void startRemoteServer(){
 		do {
 			mServer = new RemoteServer(RemoteServer.serverPort, this);
@@ -205,10 +197,17 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 					final int kc = KeyEvent.keyCodeFromString(keyCode);
 					if(kc == KeyEvent.KEYCODE_UNKNOWN) return;
 
-					// ===== 关键修复：方向键/确认/返回 在任何场景都能生效 =====
-					// 弹框/Dialog/菜单/系统弹窗等场景 InputConnection 可能拿不到，必须用全局焦点或注入
-					final boolean isNavKey = KeyEventUtils.isNavigationKey(kc);
+					// ===== 全局注入（原项目方案）：ADB 已连接时优先走 shell input keyevent =====
+					// shell 注入进入系统输入管线，任何前台 App 都能收到；而本地
+					// dispatchKeyToCurrentFocus 只能触达本进程/顶层 Activity 的焦点 View，
+					// 实测在其它 App 内全部无效。
+					// 只在 DOWN / PRESSED 时发完整按键：轻点=keydown 一次；长按连发=PRESSED 重复。
+					if (keyAction == KEY_ACTION_DOWN || keyAction == KEY_ACTION_PRESSED) {
+						if (AdbHelper.sendKeyCode(kc)) return;
+					}
 
+					// ===== ADB 未连接：退回本地派发（仅在自家窗口内有效） =====
+					final boolean isNavKey = KeyEventUtils.isNavigationKey(kc);
 					handler.post(new Runnable() {
 						@Override
 						public void run() {
@@ -232,8 +231,11 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 
 				@Override
 				public void onTextReceived(String text) {
-					if (text != null) {
-						if (!isSendToAdbService(text) && !commitText(text)) {
+					if (text == null) return;
+					// ADB 已连接 → input text 全局生效（原项目方案）。
+					// 未连接时绝不能把文字排进连不上的队列（会被静默丢弃），直接走 InputConnection。
+					if (AdbHelper.sendText(text)) return;
+					if (!commitText(text)) {
 							// ADB 与 InputConnection 都不可用：说明本输入法未设为默认、
 							// 或电视端没有输入框获得焦点。之前是静默丢弃，用户还以为已输入。
 							String hint = getString(R.string.app_name)
@@ -248,8 +250,7 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 							}
 						}
 					}
-				}
-			});
+				});
 			try {
 				mServer.start();
 				Environment.toastInHandler(this, getString(R.string.app_name) + " 远程服务已启动");
@@ -381,16 +382,18 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 	private void dispatchViaInputConnection(int kc, int keyAction) {
 		long eventTime = SystemClock.uptimeMillis();
 		InputConnection ic = getCurrentInputConnection();
+		// 走到这里说明 ADB 未连接（已连接的按键在 onKeyEventReceived 顶部就走
+		// shell 注入了），无需再判断 ADB，直接本地处理
 		switch (keyAction) {
 			case KEY_ACTION_PRESSED:
-				if(!isSendToAdbService(kc)) sendDownUpKeyEvents(kc);
+				sendDownUpKeyEvents(kc);
 				break;
 			case KEY_ACTION_DOWN:
-				if(!isSendToAdbService(kc) && ic != null) {
+				if (ic != null) {
 					ic.sendKeyEvent(new KeyEvent(eventTime, eventTime,
 							KeyEvent.ACTION_DOWN, kc, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
 							KeyEvent.FLAG_SOFT_KEYBOARD | KeyEvent.FLAG_KEEP_TOUCH_MODE));
-				} else if (!isSendToAdbService(kc)) {
+				} else {
 					injectGlobalKey(kc, KEY_ACTION_DOWN);
 				}
 				break;

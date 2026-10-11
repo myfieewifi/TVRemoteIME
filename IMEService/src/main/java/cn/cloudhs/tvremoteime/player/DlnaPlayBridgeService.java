@@ -101,7 +101,9 @@ public class DlnaPlayBridgeService extends Service {
         }
         try {
             Intent i = new Intent(this, ExoPlayerActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            // SINGLE_TOP：已在本实例时走 onNewIntent 换源，避免两个视频同时播放
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             i.putExtra("videoUrl", uri);
             i.putExtra("videoTitle", name == null ? "DLNA 投屏" : name);
             i.putExtra("fromDLNA", true);

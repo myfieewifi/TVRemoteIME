@@ -31,6 +31,7 @@ public class OtherPostRequestProcesser implements RequestProcesser {
                 case "/imeSettings":
                 case "/overlaySettings":
                 case "/rootSetIme":
+                case "/adbConnect":
                     return true;
             }
         }
@@ -68,10 +69,35 @@ public class OtherPostRequestProcesser implements RequestProcesser {
                     r.put("msg", msg);
                 } catch (Exception ignored) {}
                 return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, r.toString());
+            case "/adbConnect":
+                // 主动发起/重试 ADB 连接（远程输入与全局按键的可靠通道）。
+                // 连接是异步的，返回"已发起"，前端 1s 后查 /api/status 看结果。
+                return adbConnectResponse();
             default:
                 return RemoteServer.createPlainTextResponse(
                         NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
+    }
+
+    private NanoHTTPD.Response adbConnectResponse() {
+        JSONObject r = new JSONObject();
+        boolean started = false;
+        String msg;
+        try {
+            cn.cloudhs.tvremoteime.adb.AdbHelper.createInstance();
+            started = cn.cloudhs.tvremoteime.adb.AdbHelper.initService(context);
+            cn.cloudhs.tvremoteime.adb.AdbHelper h = cn.cloudhs.tvremoteime.adb.AdbHelper.getInstance();
+            boolean connected = h != null && h.isConnected();
+            msg = connected ? "ADB 已连接"
+                    : (started ? "已发起连接（需电视端开发者选项开启 USB/网络调试）" : "ADB 服务启动失败");
+        } catch (Throwable t) {
+            msg = "ADB 连接异常：" + t.getMessage();
+        }
+        try {
+            r.put("ok", started);
+            r.put("msg", msg);
+        } catch (Exception ignored) {}
+        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, r.toString());
     }
 
     /** 从服务进程尝试拉起设置页；Android 10+ 有后台启动限制，失败时在电视端 Toast 引导 */

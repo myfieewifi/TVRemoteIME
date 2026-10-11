@@ -61,11 +61,10 @@ public class ExoPlayerActivity extends Activity {
     private ExoPlayer player;
     private TextView tvTitle, tvPos, tvDur, tvStatus;
     private SeekBar seekBar;
-    private ImageButton btnPlayPause, btnBack, btnFF, btnRew;
+    private ImageButton btnPlayPause, btnFF, btnRew;
     private LinearLayout controls;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean mControlsShowing = true;
-    private Runnable hideControlsTask;
     private String videoUrl;
     private String videoTitle;
     private boolean mDestroyed = false;
@@ -136,7 +135,6 @@ public class ExoPlayerActivity extends Activity {
         tvStatus = findViewById(R.id.tv_status);
         seekBar = findViewById(R.id.seekbar);
         btnPlayPause = findViewById(R.id.btn_play_pause);
-        btnBack = findViewById(R.id.btn_back);
         btnFF = findViewById(R.id.btn_ff);
         btnRew = findViewById(R.id.btn_rew);
         controls = findViewById(R.id.controls);
@@ -157,7 +155,8 @@ public class ExoPlayerActivity extends Activity {
         tvTitle.setText(videoTitle);
         tvStatus.setText("准备中...");
 
-        btnBack.setOnClickListener(v -> finish());
+        // 左上角「关闭」与右上角「截图」按钮已按需求移除：
+        // 容易误操作，退出统一走遥控器返回键
         btnPlayPause.setOnClickListener(v -> togglePlay());
         btnFF.setOnClickListener(v -> seekForward());
         btnRew.setOnClickListener(v -> seekBack());
@@ -186,8 +185,6 @@ public class ExoPlayerActivity extends Activity {
             }
         });
 
-        hideControlsTask = () -> showControls(false);
-
         // 两个 Receiver 分别 try-catch + 各自加 flag：targetSdk 33 下 registerReceiver 不带
         // RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED 会抛 SecurityException；若共用一个 try，
         // stopReceiver 失败会连带 dlnaCtrlReceiver 也注册不上（网页停止 + DLNA 控制全断）。
@@ -210,12 +207,37 @@ public class ExoPlayerActivity extends Activity {
         } catch (Exception e) { Log.e(TAG, "注册DLNA控制广播失败", e); }
 
         preparePlayer();
-        // DLNA 投屏不自动显示控制条，用户按键再显示
-        showControls(!mFromDLNA);
+        // 控制条（快进/快退/暂停/进度条）默认常显：
+        // 电视端遥控器不易唤回自动隐藏的浮层，实测用户"看不到控件"
+        showControls(true);
+    }
+
+    /** 连推第二个视频时（CLEAR_TOP|SINGLE_TOP 复用本实例）换源播放，
+     *  避免新起一个 Activity 导致两个视频同时出声 */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String newUrl = intent.getStringExtra("videoUrl");
+        if (newUrl == null && intent.getData() != null) newUrl = intent.getData().toString();
+        if (newUrl == null) newUrl = intent.getStringExtra("url");
+        if (newUrl == null || newUrl.trim().isEmpty()) return;
+        String newTitle = intent.getStringExtra("videoTitle");
+        mFromDLNA = intent.getBooleanExtra("fromDLNA", mFromDLNA);
+        videoUrl = newUrl;
+        videoTitle = newTitle == null ? (mFromDLNA ? "DLNA投屏" : "投屏播放") : newTitle;
+        tvTitle.setText(videoTitle);
+        tvStatus.setText("切换中...");
+        preparePlayer();
     }
 
     private void preparePlayer() {
         try {
+            // 换源（onNewIntent）时先释放旧实例，否则两个 player 同时播
+            if (player != null) {
+                try { player.stop(); player.release(); } catch (Throwable ignored) {}
+                player = null;
+            }
             player = new ExoPlayer.Builder(this).build();
             playerView.setPlayer(player);
 
@@ -349,11 +371,8 @@ public class ExoPlayerActivity extends Activity {
         if (mDestroyed) return;
         controls.setVisibility(show ? View.VISIBLE : View.GONE);
         mControlsShowing = show;
-        handler.removeCallbacks(hideControlsTask);
-        // 仅在播放中且非DLNA投屏时自动隐藏
-        if (show && player != null && player.isPlaying() && !mFromDLNA) {
-            handler.postDelayed(hideControlsTask, 4000);
-        }
+        // 不再自动隐藏：电视遥控器不易唤回自动隐藏的浮层；
+        // 需要"全屏观感"时按 MENU 键可手动隐藏/显示
     }
 
     private void toggleControls() { showControls(!mControlsShowing); }
@@ -363,24 +382,20 @@ public class ExoPlayerActivity extends Activity {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
+                // OK 键直接控制播放/暂停（控制条常显，无需再"先唤出再操作"）
+                togglePlay(); return true;
             case KeyEvent.KEYCODE_MENU:
-                toggleControls();
-                return true;
+                toggleControls(); return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (mControlsShowing) { seekBack(); return true; }
-                break;
+                seekBack(); return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (mControlsShowing) { seekForward(); return true; }
-                break;
+                seekForward(); return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                 togglePlay(); return true;
             case KeyEvent.KEYCODE_BACK:
-                if (mControlsShowing && controls.getVisibility() == View.VISIBLE) {
-                    showControls(false);
-                    return true;
-                }
+                // 返回键 = 退出播放器（关闭按钮已移除，统一走这里）
                 finish();
                 return true;
         }

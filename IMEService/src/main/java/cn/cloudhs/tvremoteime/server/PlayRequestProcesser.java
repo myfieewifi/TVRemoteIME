@@ -40,6 +40,27 @@ public class PlayRequestProcesser implements RequestProcesser {
         return false;
     }
 
+    /** 启动 ExoPlayer 播放器。
+     *  CLEAR_TOP|SINGLE_TOP：连推第二个视频时复用已存在的播放实例（onNewIntent 换源），
+     *  而不是叠一个新 Activity 上去——否则两个实例同时播放。 */
+    private void startExoPlayer(String url, String title, AppConfig config) {
+        Intent i = new Intent(context, ExoPlayerActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        i.putExtra("videoUrl", url);
+        i.putExtra("videoTitle", title);
+        // 播放器运行在独立进程（:player），SharedPreferences 跨进程不保证实时同步，
+        // 故在主进程读取 UA 后通过 Intent 显式传递，避免播放器读到过期配置
+        i.putExtra("userAgent", config.getPlayerUserAgent());
+        try {
+            context.startActivity(i);
+        } catch (Throwable t) {
+            Log.e(TAG, "启动 ExoPlayer 失败，退回旧播放器", t);
+            VideoPlayHelper.playUrl(this.context, url, 0, false);
+        }
+    }
+
     @Override
     public NanoHTTPD.Response doResponse(NanoHTTPD.IHTTPSession session, String fileName, Map<String, String> params, Map<String, String> files) {
         switch (fileName) {
@@ -85,22 +106,17 @@ public class PlayRequestProcesser implements RequestProcesser {
                     VideoPlayHelper.playUrl(this.context, url, 0, true);
                 } else if (useIJK) {
                     // 旧 ijkplayer / 迅雷下载路径
-                    VideoPlayHelper.playUrl(this.context, url, 0, false);
+                    try {
+                        VideoPlayHelper.playUrl(this.context, url, 0, false);
+                    } catch (Throwable t) {
+                        // 任何启动异常都不能让 NanoHTTPD 工作线程带着未捕获异常挂掉整个进程
+                        Log.e(TAG, "IJK 播放器启动失败，回退 ExoPlayer", t);
+                        engineUsed = "exo";
+                        startExoPlayer(url, title, config);
+                    }
                 } else {
                     // 默认走新版 ExoPlayer 播放器
-                    try {
-                        Intent i = new Intent(context, ExoPlayerActivity.class);
-                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        i.putExtra("videoUrl", url);
-                        i.putExtra("videoTitle", title);
-                        // 播放器运行在独立进程（:player），SharedPreferences 跨进程不保证实时同步，
-                        // 故在主进程读取 UA 后通过 Intent 显式传递，避免播放器读到过期配置
-                        i.putExtra("userAgent", config.getPlayerUserAgent());
-                        context.startActivity(i);
-                    } catch (Throwable t) {
-                        Log.e(TAG, "启动 ExoPlayer 失败，退回旧播放器", t);
-                        VideoPlayHelper.playUrl(this.context, url, 0, false);
-                    }
+                    startExoPlayer(url, title, config);
                 }
                 return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
                         "{\"ok\":true,\"engine\":\"" + engineUsed + "\"}");

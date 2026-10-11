@@ -15,6 +15,7 @@ import android.view.WindowManager;
 import java.lang.reflect.Method;
 
 import cn.cloudhs.tvremoteime.IMEService;
+import cn.cloudhs.tvremoteime.adb.AdbHelper;
 
 /**
  * 通过反射调用系统 InputManager 注入全局触摸事件（模拟触摸板/鼠标）。
@@ -99,11 +100,13 @@ public class TouchInjector {
 
     /**
      * 处理来自前端的触摸板事件。
-     * @param action: "move" / "down" / "up" / "click" / "longclick" / "scroll"
+     * @param action: "move" / "down" / "up" / "click" / "longclick" / "scroll" / "home"
      * @param dx, dy: move/scroll 时的相对偏移（触摸板像素）
+     * @return 该动作是否有可用通道（反射注入成功，或已交给 ADB 兜底）
      */
     public synchronized boolean sendTouch(String action, float dx, float dy) {
-        if (!sAvailable) return false;
+        // 注意：不再以 sAvailable 作为总开关——反射注入被系统拒绝后，
+        // click/longclick/scroll 仍可走 ADB input tap/swipe 兜底
         try {
             switch (action) {
                 case "move":
@@ -147,17 +150,14 @@ public class TouchInjector {
                 case "click":
                     // 单击（明确请求）
                     clamp();
-                    injectClick(mCurX, mCurY);
-                    break;
+                    return injectClick(mCurX, mCurY);
                 case "longclick":
                     clamp();
-                    injectLongClick(mCurX, mCurY);
-                    break;
+                    return injectLongClick(mCurX, mCurY);
                 case "scroll":
                     // 滚轮：dy >0 向下，dy<0 向上
                     clamp();
-                    injectScroll(mCurX, mCurY, -dy * 0.3f);
-                    break;
+                    return injectScroll(mCurX, mCurY, -dy * 0.3f);
                 case "home":
                     resetPos();
                     break;
@@ -201,34 +201,44 @@ public class TouchInjector {
         }
     }
 
-    private void injectClick(float x, float y) {
+    /** 点击：优先反射注入；被系统拒绝（无 INJECT_EVENTS 权限）时走 ADB input tap 兜底 */
+    private boolean injectClick(float x, float y) {
         long now = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
         down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         MotionEvent up = MotionEvent.obtain(now, now, MotionEvent.ACTION_UP, x, y, 0);
         up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        inject(down);
-        try { Thread.sleep(16); } catch (InterruptedException ignored) {}
-        inject(up);
+        boolean ok = inject(down);
+        if (ok) {
+            try { Thread.sleep(16); } catch (InterruptedException ignored) {}
+            inject(up);
+        }
         down.recycle();
         up.recycle();
+        return ok || AdbHelper.sendShellCommand("input tap " + (int) x + " " + (int) y);
     }
 
-    private void injectLongClick(float x, float y) {
+    /** 长按：反射注入失败时走 ADB 同点 swipe 800ms 兜底 */
+    private boolean injectLongClick(float x, float y) {
         long now = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
         down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        inject(down);
-        // 先 move 一下再等 500ms
-        try { Thread.sleep(520); } catch (InterruptedException ignored) {}
-        MotionEvent up = MotionEvent.obtain(now, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0);
-        up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        inject(up);
+        boolean ok = inject(down);
+        if (ok) {
+            // 先 move 一下再等 500ms
+            try { Thread.sleep(520); } catch (InterruptedException ignored) {}
+            MotionEvent up = MotionEvent.obtain(now, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0);
+            up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+            inject(up);
+            up.recycle();
+        }
         down.recycle();
-        up.recycle();
+        return ok || AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
+                + " " + (int) x + " " + (int) y + " 800");
     }
 
-    private void injectScroll(float x, float y, float vScroll) {
+    /** 滚动：滚轮轴 → DPAD 键 → ADB swipe 三级退化 */
+    private boolean injectScroll(float x, float y, float vScroll) {
         long now = SystemClock.uptimeMillis();
         MotionEvent ev = MotionEvent.obtain(now, now, MotionEvent.ACTION_SCROLL,
                 x, y, 0);
@@ -236,34 +246,39 @@ public class TouchInjector {
         boolean injected = false;
         try {
             // MotionEvent#setAxisValue 属于系统隐藏接口，公开 SDK 中未导出，
-            // 直接调用无法通过编译，这里改用反射赋值；若当前系统不具备该方法，
-            // 则在下方退化为 DPAD 上下键翻动，保证老设备仍可使用。
+            // 直接调用无法通过编译，这里改用反射赋值
             Method setAxisValue = MotionEvent.class.getMethod(
                     "setAxisValue", int.class, float.class);
             setAxisValue.invoke(ev, MotionEvent.AXIS_VSCROLL, vScroll);
-            inject(ev);
-            injected = true;
+            injected = inject(ev);
         } catch (Throwable t) {
             Log.w(TAG, "滚轮事件不可用，退化为方向键翻动", t);
         }
         ev.recycle();
-        if (!injected) {
-            // vScroll > 0 表示向上滚动，对应 DPAD_UP；反之对应 DPAD_DOWN
-            injectKey(vScroll > 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
-        }
+        if (injected) return true;
+        // vScroll > 0 表示向上滚动，对应 DPAD_UP；反之对应 DPAD_DOWN
+        if (injectKey(vScroll > 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN)) return true;
+        // ADB 兜底：vScroll<0（向下翻）= 手指上滑，滑动距离由滚动量放大
+        int dist = Math.max(40, (int) Math.abs(vScroll) * 60);
+        int toY = (int) Math.max(0, vScroll < 0 ? y + dist : y - dist);
+        return AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
+                + " " + (int) x + " " + toY + " 300");
     }
 
-    /** 注入一次按键（按下 + 抬起），用于滚轮不可用时的退化方案 */
-    private void injectKey(int keyCode) {
-        if (sInjectInputEventMethod == null || sInputManager == null) return;
+    /** 注入一次按键（按下 + 抬起），用于滚轮不可用时的退化方案。
+     *  注入不可用（无权限）时返回 false，由调用方走 ADB 兜底。 */
+    private boolean injectKey(int keyCode) {
+        if (sInjectInputEventMethod == null || sInputManager == null) return false;
         long now = SystemClock.uptimeMillis();
         KeyEvent down = new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0);
         KeyEvent up = new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0);
         try {
-            sInjectInputEventMethod.invoke(sInputManager, down, INJECT_INPUT_EVENT_MODE_ASYNC);
-            sInjectInputEventMethod.invoke(sInputManager, up, INJECT_INPUT_EVENT_MODE_ASYNC);
+            boolean ok = sInjectInputEventMethod.invoke(sInputManager, down, INJECT_INPUT_EVENT_MODE_ASYNC) != null;
+            ok &= sInjectInputEventMethod.invoke(sInputManager, up, INJECT_INPUT_EVENT_MODE_ASYNC) != null;
+            return ok;
         } catch (Throwable t) {
-            Log.e(TAG, "按键注入失败", t);
+            markUnavailable(t);
+            return false;
         }
     }
 
@@ -290,12 +305,23 @@ public class TouchInjector {
         ev.recycle();
     }
 
-    private void inject(MotionEvent ev) {
-        if (sInjectInputEventMethod == null || sInputManager == null) return;
+    /** 注入运动事件。被系统拒绝（SecurityException / INJECT_EVENTS 权限）返回 false
+     *  并标记不可用，后续 click/scroll 自动走 ADB 兜底。 */
+    private boolean inject(MotionEvent ev) {
+        if (sInjectInputEventMethod == null || sInputManager == null) return false;
         try {
             sInjectInputEventMethod.invoke(sInputManager, ev, INJECT_INPUT_EVENT_MODE_ASYNC);
+            return true;
         } catch (Throwable t) {
-            Log.e(TAG, "injectInputEvent 调用失败", t);
+            markUnavailable(t);
+            return false;
         }
+    }
+
+    private void markUnavailable(Throwable t) {
+        // 反射调用抛 InvocationTargetException，多半是权限被拒；置 sAvailable=false
+        // 让前端 ack.available 立刻反映真实情况，避免"看起来在动实际没注入"
+        Log.w(TAG, "注入被系统拒绝，点击/滚动将走 ADB 兜底: " + t);
+        sAvailable = false;
     }
 }

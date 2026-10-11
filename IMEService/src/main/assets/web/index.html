@@ -44,31 +44,32 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;
 .panel.active{display:block;}
 /* ===== 遥控面板 ===== */
 .dpad-wrap{display:flex;flex-direction:column;align-items:center;margin-top:4px;}
-.dpad{position:relative;width:220px;height:220px;margin-top:8px;}
-.dpad .ring{position:absolute;inset:0;border-radius:50%;
-  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.12),rgba(255,255,255,.03) 60%,rgba(0,0,0,.25));
-  box-shadow:inset 0 2px 8px rgba(255,255,255,.08),0 10px 24px rgba(0,0,0,.35);}
-.arrow{position:absolute;width:60px;height:60px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.05));border-radius:50%;
-  font-size:22px;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.15);}
-.arrow:active{transform:scale(.92);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
-.arrow.up{top:6px;left:50%;transform:translateX(-50%);}
-.arrow.up:active{transform:translateX(-50%) scale(.92);}
-.arrow.down{bottom:6px;left:50%;transform:translateX(-50%);}
-.arrow.down:active{transform:translateX(-50%) scale(.92);}
-.arrow.left{top:50%;left:6px;transform:translateY(-50%);}
-.arrow.left:active{transform:translateY(-50%) scale(.92);}
-.arrow.right{top:50%;right:6px;transform:translateY(-50%);}
-.arrow.right:active{transform:translateY(-50%) scale(.92);}
-.ok-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;
-  background:linear-gradient(145deg,#ffffff 0%,#d7defd 100%);color:#4a3aa0;display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:700;letter-spacing:2px;box-shadow:0 6px 18px rgba(94,90,255,.35),inset 0 -3px 0 rgba(0,0,0,.08);}
-.ok-btn:active{transform:translate(-50%,-50%) scale(.94);box-shadow:0 3px 8px rgba(94,90,255,.25);}
-.func-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px;width:100%;max-width:360px;}
+/* 十字按键：3×3 网格布局，四角留空；按键为独立块+边缘框线，无圆环包裹 */
+.dpad{display:grid;grid-template-columns:repeat(3,74px);grid-template-rows:repeat(3,74px);
+  gap:10px;justify-content:center;margin-top:10px;}
+.dkey{border-radius:18px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:#e8ecff;
+  background:rgba(255,255,255,.07);
+  border:1.5px solid rgba(255,255,255,.22);
+  box-shadow:0 3px 10px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.08);}
+/* 按压效果：仅更换背景色与框线，不做缩放/位移 */
+.dkey:active{background:linear-gradient(145deg,#5e7bff,#8a4dff);color:#fff;
+  border-color:rgba(143,164,255,.9);box-shadow:0 0 14px rgba(94,123,255,.45);}
+.dkey.up{grid-area:1/2;}
+.dkey.left{grid-area:2/1;}
+.dkey.right{grid-area:2/3;}
+.dkey.down{grid-area:3/2;}
+.dkey.ok-btn{grid-area:2/2;font-size:16px;font-weight:700;letter-spacing:2px;
+  background:linear-gradient(145deg,#ffffff 0%,#d7defd 100%);color:#4a3aa0;
+  border:1.5px solid rgba(255,255,255,.65);}
+.dkey.ok-btn:active{background:linear-gradient(145deg,#aebcff,#8fa4ff);color:#2c2c8f;
+  border-color:#ffffff;box-shadow:0 0 16px rgba(94,123,255,.55);}
+.func-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px;width:100%;max-width:360px;}
 .func-btn{padding:13px 0;border-radius:12px;font-size:13px;text-align:center;
   background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
   box-shadow:0 3px 8px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.1);font-weight:500;}
-.func-btn:active{transform:scale(.95);background:linear-gradient(145deg,#5e7bff,#8a4dff);}
+.func-btn:active{background:linear-gradient(145deg,#5e7bff,#8a4dff);
+  box-shadow:0 0 12px rgba(94,123,255,.4),inset 0 1px 0 rgba(255,255,255,.1);}
 .vol-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;width:100%;max-width:360px;}
 /* ===== 触摸板面板 ===== */
 .touchpad{margin-top:8px;border-radius:18px;width:100%;height:260px;
@@ -166,12 +167,11 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   <div class="panel active" id="p-remote">
     <div class="dpad-wrap">
       <div class="dpad">
-        <div class="ring"></div>
-        <div class="arrow up" data-key="KEYCODE_DPAD_UP">▲</div>
-        <div class="arrow down" data-key="KEYCODE_DPAD_DOWN">▼</div>
-        <div class="arrow left" data-key="KEYCODE_DPAD_LEFT">◀</div>
-        <div class="arrow right" data-key="KEYCODE_DPAD_RIGHT">▶</div>
-        <div class="ok-btn" data-key="KEYCODE_DPAD_CENTER">OK</div>
+        <div class="dkey up" data-key="KEYCODE_DPAD_UP">▲</div>
+        <div class="dkey left" data-key="KEYCODE_DPAD_LEFT">◀</div>
+        <div class="dkey ok-btn" data-key="KEYCODE_DPAD_CENTER">OK</div>
+        <div class="dkey right" data-key="KEYCODE_DPAD_RIGHT">▶</div>
+        <div class="dkey down" data-key="KEYCODE_DPAD_DOWN">▼</div>
       </div>
     </div>
     <div style="display:flex;justify-content:center;">
@@ -179,7 +179,6 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         <div class="func-btn" data-key="KEYCODE_BACK">↩ 返回</div>
         <div class="func-btn" data-key="KEYCODE_HOME">🏠 主页</div>
         <div class="func-btn" data-key="KEYCODE_MENU">≡ 菜单</div>
-        <div class="func-btn" data-key="KEYCODE_SEARCH">🔍 搜索</div>
       </div>
     </div>
     <div style="display:flex;justify-content:center;">
@@ -235,6 +234,7 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
   <!-- 输入 -->
   <div class="panel" id="p-input">
     <div class="banner err" id="imeBanner" style="display:none;"></div>
+    <div class="banner warn" id="adbBanner" style="display:none;"></div>
     <div class="input-wrap">
       <textarea id="txt" placeholder="在这里输入文字，点击发送即可一键输入到电视"></textarea>
       <div class="input-btns">
@@ -330,21 +330,41 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
       const ib=$('#imeBanner');
       if(ib){
         if(!st.imeEnabled||!st.imeDefault){
-          ib.className='banner '+(st.imeEnabled?'warn':'err');
-          ib.innerHTML='<div class="txt">'+
-            (st.imeEnabled?'输入法已启用但<b>未设为默认</b>，远程输入无法生效。':'输入法<b>尚未启用</b>，远程输入无法生效。')+
-            '</div>'+
-            (st.rootAvailable?'<button id="btnRootSet">ROOT 设默认</button>':'')+
-            '<button id="btnImeSet" class="ghost">去设置</button>';
-          ib.style.display='flex';
-          const bRoot=$('#btnRootSet');
-          if(bRoot)bRoot.addEventListener('click',()=>{postJson('/rootSetIme').then(r=>{toast(r.msg||'操作完成');if(r.ok)setTimeout(refreshStatusInfo,800);}).catch(()=>toast('请求失败'));vibrate();});
-          $('#btnImeSet').addEventListener('click',()=>{postJson('/imeSettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
+          // IME 未启用/未设默认，但 ADB 已连接时输入照样全局可用（input text）
+          if(st.adbConnected){
+            ib.className='banner good';
+            ib.innerHTML='<div class="txt">✓ ADB 已连接，远程输入全局可用（建议同时将本输入法设为默认）</div>';
+          }else{
+            ib.className='banner '+(st.imeEnabled?'warn':'err');
+            ib.innerHTML='<div class="txt">'+
+              (st.imeEnabled?'输入法已启用但<b>未设为默认</b>':'输入法<b>尚未启用</b>')+
+              '，远程输入无法生效。</div>'+
+              (st.rootAvailable?'<button id="btnRootSet">ROOT 设默认</button>':'')+
+              '<button id="btnImeSet" class="ghost">去设置</button>';
+            const bRoot=$('#btnRootSet');
+            if(bRoot)bRoot.addEventListener('click',()=>{postJson('/rootSetIme').then(r=>{toast(r.msg||'操作完成');if(r.ok)setTimeout(refreshStatusInfo,800);}).catch(()=>toast('请求失败'));vibrate();});
+            $('#btnImeSet').addEventListener('click',()=>{postJson('/imeSettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
+          }
         }else{
           ib.className='banner good';
           ib.innerHTML='<div class="txt">✓ 输入法已启用并设为默认，远程输入可直接生效</div>';
-          ib.style.display='flex';
         }
+        ib.style.display='flex';
+      }
+      // ADB 通道横幅：全局按键/文字/触摸点击的可靠通道
+      const ab=$('#adbBanner');
+      if(ab){
+        if(st.adbConnected){
+          ab.className='banner good';
+          ab.innerHTML='<div class="txt">✓ ADB 已连接：遥控按键在任意 App 内有效，触摸点击可用</div>';
+        }else{
+          ab.className='banner warn';
+          ab.innerHTML='<div class="txt">未连接 ADB：按键仅在电视本应用内有效，无法控制其它 App。请在电视「开发者选项」开启 USB/网络调试。</div>'+
+            '<button id="btnAdbConn">重试连接</button>';
+          const bAdb=$('#btnAdbConn');
+          if(bAdb)bAdb.addEventListener('click',()=>{postJson('/adbConnect').then(r=>{toast(r.msg||'已发起连接');setTimeout(refreshStatusInfo,1500);}).catch(()=>toast('请求失败'));vibrate();});
+        }
+        ab.style.display='flex';
       }
       const ob=$('#ovBanner');
       if(ob)ob.style.display=st.overlayGranted?'none':'flex';

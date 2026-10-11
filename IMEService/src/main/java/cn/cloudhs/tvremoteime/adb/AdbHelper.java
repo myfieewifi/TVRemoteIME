@@ -38,6 +38,61 @@ public class AdbHelper {
         return running;
     }
 
+    /** ADB 是否已真正建立连接（区别于 isRunning：init 后未连上前 running 已为 true）。
+     *  调用方据此决定是否把按键/文字/触摸托付给 ADB——只看 isRunning 会把数据排进
+     *  一个永远连不上的队列然后静默丢弃。 */
+    public boolean isConnected(){
+        return running && connection != null;
+    }
+
+    /** 原始 shell 命令载体：与 Integer（keyevent）/String（input text）区分开 */
+    public static class ShellCommand {
+        public final String cmd;
+        public ShellCommand(String cmd){ this.cmd = cmd; }
+    }
+
+    /**
+     * 发送任意 shell 命令（如 input tap 100 200）。
+     * 仅在 ADB 已连接时返回 true；未连接时返回 false，调用方自行降级。
+     */
+    public static boolean sendShellCommand(String cmd){
+        try {
+            AdbHelper h = getInstance();
+            if (h != null && h.isConnected()) {
+                h.sendData(new ShellCommand(cmd));
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** 发送文字（input text），仅在 ADB 已连接时返回 true */
+    public static boolean sendText(String text){
+        try {
+            AdbHelper h = getInstance();
+            if (h != null && h.isConnected()) {
+                h.sendData(text);
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** 发送按键事件（input keyevent），仅在 ADB 已连接时返回 true */
+    public static boolean sendKeyCode(int keyCode){
+        try {
+            AdbHelper h = getInstance();
+            if (h != null && h.isConnected()) {
+                h.sendData(keyCode);
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public void init(Context context, String host, int port) {
         this.context = context;
         this.host = host;
@@ -96,6 +151,9 @@ public class AdbHelper {
                         String msg = null;
                         if(data instanceof Integer){
                             msg = "shell:input keyevent " + String.valueOf(data);
+                        }else if(data instanceof ShellCommand){
+                            // 原始 shell 命令（如 input tap / input swipe），供触摸注入兜底
+                            msg = "shell:" + ((ShellCommand) data).cmd;
                         }else{
                             msg = "shell:input text \"" + ((String)data).replaceAll("\"", "\\\"").replaceAll("\\\\", "\\\\") + "\"";
                         }
@@ -199,6 +257,11 @@ public class AdbHelper {
         }
     }
     public static boolean initService(Context context){
+        if(instance == null){
+            // 没人先行 createInstance（如已设为默认输入法时 boot 接收器不会创建），
+            // 这里兜底创建，保证 /adbConnect 等主动重连路径可用
+            createInstance();
+        }
         if(instance != null){
             if(!instance.isRunning()){
                 instance.init(context, RemoteServer.getLocalIPAddress(context), Environment.adbServerPort);

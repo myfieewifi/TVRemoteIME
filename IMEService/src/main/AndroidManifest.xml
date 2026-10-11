@@ -103,6 +103,12 @@
             </intent-filter>
         </activity>
 
+        <!-- IJK 播放内核依赖的后台媒体服务（IjkVideoView 启动它持有 IMediaPlayer）。
+             原项目清单里有此声明，fork 清理时被误删，导致 IJK 内核一播即崩 -->
+        <service
+            android:name="player.services.MediaPlayerService"
+            android:exported="false" />
+
         <receiver android:name=".IMEServiceBroadCastReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

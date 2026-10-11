@@ -25,15 +25,6 @@
         android:paddingRight="16dp"
         android:background="#88000000">
 
-        <ImageButton
-            android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?android:attr/selectableItemBackground"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:scaleType="centerInside"
-            android:contentDescription="返回"/>
-
         <TextView
             android:id="@+id/tv_title"
             android:layout_width="0dp"
@@ -53,15 +44,6 @@
             android:textColor="#ffcc00"
             android:textSize="13sp"
             android:paddingRight="8dp"/>
-
-        <ImageButton
-            android:id="@+id/btn_fullscreen"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?android:attr/selectableItemBackground"
-            android:src="@android:drawable/ic_menu_crop"
-            android:scaleType="centerInside"
-            android:contentDescription="全屏"/>
     </LinearLayout>
 
     <!-- 底部控制栏 -->
