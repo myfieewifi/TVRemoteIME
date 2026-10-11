@@ -32,6 +32,8 @@ public class OtherPostRequestProcesser implements RequestProcesser {
                 case "/overlaySettings":
                 case "/rootSetIme":
                 case "/adbConnect":
+                case "/openAccessibility":
+                case "/rootEnableTouch":
                     return true;
             }
         }
@@ -73,10 +75,41 @@ public class OtherPostRequestProcesser implements RequestProcesser {
                 // 主动发起/重试 ADB 连接（远程输入与全局按键的可靠通道）。
                 // 连接是异步的，返回"已发起"，前端 1s 后查 /api/status 看结果。
                 return adbConnectResponse();
+            case "/openAccessibility":
+                // 远程打开电视端「无障碍」设置页（触摸注入需用户在系统设置中开启服务）
+                return openSettingsResponse(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            case "/rootEnableTouch":
+                // ROOT 设备一键静默开启无障碍触摸注入服务
+                return rootEnableTouchResponse();
             default:
                 return RemoteServer.createPlainTextResponse(
                         NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
+    }
+
+    /** ROOT 一键开启无障碍触摸注入服务 */
+    private NanoHTTPD.Response rootEnableTouchResponse() {
+        JSONObject r = new JSONObject();
+        boolean ok = false;
+        String msg;
+        if (RootUtil.isRootAvailableCached()) {
+            String cn = context.getPackageName() + "/"
+                    + cn.cloudhs.tvremoteime.input.TouchAccessibilityService.class.getName();
+            ok = RootUtil.execAsRoot(
+                    "settings put secure enabled_accessibility_services " + cn,
+                    "settings put secure accessibility_enabled 1"
+            );
+            msg = ok ? "已通过 ROOT 开启触摸注入服务（若未生效请在电视无障碍设置中手动开启）"
+                    : "ROOT 执行失败，请检查 su 授权";
+        } else {
+            msg = "设备未 ROOT，请在电视「设置 → 无障碍」中手动开启「云视远程输入法」的触摸注入服务";
+        }
+        try {
+            r.put("ok", ok);
+            r.put("msg", msg);
+        } catch (Exception ignored) {}
+        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, r.toString());
     }
 
     private NanoHTTPD.Response adbConnectResponse() {

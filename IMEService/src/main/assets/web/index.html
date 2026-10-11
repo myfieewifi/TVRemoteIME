@@ -266,6 +266,11 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         <button id="btn-play">▶ 播放</button>
         <button class="gray" id="btn-stop">⏹ 停止</button>
       </div>
+      <div class="row">
+        <button class="gray" id="btn-rew">⏪ 10s</button>
+        <button class="gray" id="btn-ppause">⏯ 暂停/继续</button>
+        <button class="gray" id="btn-ff">10s ⏩</button>
+      </div>
     </div>
     <div class="cast-card">
       <label>播放器内核</label>
@@ -367,10 +372,31 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
         ab.style.display='flex';
       }
       const ob=$('#ovBanner');
-      if(ob)ob.style.display=st.overlayGranted?'none':'flex';
+      if(ob){
+        if(!st.overlayGranted){
+          ob.className='banner warn';
+          ob.innerHTML='<div class="txt">电视端未授予「显示在其他应用上层」权限，滑动时看不到光标，只能盲点。</div>'+
+            '<button id="btnOvGrant">去授权</button>';
+        }else if(!st.touchInjectOn&&!st.adbConnected){
+          // 反射注入被系统权限拒绝时，点击需无障碍手势注入或 ADB 兜底
+          ob.className='banner warn';
+          ob.innerHTML='<div class="txt">触摸板<b>点击</b>无法生效：需开启「无障碍」触摸注入服务（免 ROOT，一次开启永久有效）。</div>'+
+            (st.rootAvailable?'<button id="btnRootTouch">ROOT 一键开启</button>':'')+
+            '<button id="btnAccSet" class="ghost">去开启</button>';
+          const bRT=$('#btnRootTouch');
+          if(bRT)bRT.addEventListener('click',()=>{postJson('/rootEnableTouch').then(r=>{toast(r.msg||'操作完成');setTimeout(refreshStatusInfo,1500);}).catch(()=>toast('请求失败'));vibrate();});
+          const bAS=$('#btnAccSet');
+          if(bAS)bAS.addEventListener('click',()=>{postJson('/openAccessibility').then(r=>toast(r.msg||'已在电视端打开无障碍设置，请用遥控器开启本服务')).catch(()=>toast('请求失败'));vibrate();});
+        }else{
+          ob.style.display='none';
+          return;
+        }
+        ob.style.display='flex';
+        const bOG=$('#btnOvGrant');
+        if(bOG)bOG.addEventListener('click',()=>{postJson('/overlaySettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
+      }
     }).catch(()=>{});
   }
-  $('#btnOvGrant').addEventListener('click',()=>{postJson('/overlaySettings').then(r=>toast(r.msg||'已发送')).catch(()=>toast('请求失败'));vibrate();});
   setTimeout(refreshStatusInfo,300);
 
   // ===== WebSocket =====
@@ -610,6 +636,12 @@ textarea#txt{width:100%;min-height:80px;border-radius:12px;border:none;padding:1
     }).catch(()=>toast('请求失败'));vibrate();
   });
   $('#btn-stop').addEventListener('click',()=>{fetch('/playStop',{method:'POST'}).then(()=>toast('已停止'));vibrate();});
+  // 播放控制（经广播直达播放器进程，不依赖输入法焦点）
+  function sendCtrl(cmd,msg){const b=new URLSearchParams();b.set('cmd',cmd);
+    fetch('/ctrl',{method:'POST',body:b}).then(()=>toast(msg||'已发送')).catch(()=>toast('请求失败'));vibrate();}
+  $('#btn-rew').addEventListener('click',()=>sendCtrl('rew','快退 10 秒'));
+  $('#btn-ff').addEventListener('click',()=>sendCtrl('ff','快进 10 秒'));
+  $('#btn-ppause').addEventListener('click',()=>sendCtrl('toggle','暂停 / 继续'));
   $('#castFile').addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);fd.append('path','/'+f.name);
     toast('上传中：'+f.name);

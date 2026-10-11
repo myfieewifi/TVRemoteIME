@@ -21,4 +21,5 @@
     <string name="toast_network_error">检查更新失败，请检查网络</string>
     <string name="about_title">关于云视远程输入法</string>
     <string name="dlna_name_hint">DLNA 设备名后缀（如：客厅）</string>
+    <string name="touch_accessibility_desc">为触摸板远程控制提供点击与滑动手势注入，不读取任何屏幕内容</string>
 </resources>

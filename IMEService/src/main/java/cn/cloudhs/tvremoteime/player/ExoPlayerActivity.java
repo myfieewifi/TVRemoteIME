@@ -63,8 +63,12 @@ public class ExoPlayerActivity extends Activity {
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnFF, btnRew;
     private LinearLayout controls;
+    private LinearLayout topBar;
     private Handler handler = new Handler(Looper.getMainLooper());
     private boolean mControlsShowing = true;
+    private Runnable hideControlsTask;
+    /** 顶部栏与控件区无操作自动隐藏延时 */
+    private static final long HIDE_DELAY_MS = 5000L;
     private String videoUrl;
     private String videoTitle;
     private boolean mDestroyed = false;
@@ -96,6 +100,18 @@ public class ExoPlayerActivity extends Activity {
                 case "seek":
                     long pos = intent.getLongExtra(DlnaPlayBridgeService.EXTRA_SEEK_POS, -1);
                     if (pos >= 0) player.seekTo(pos);
+                    break;
+                case "ff":
+                    // 相对快进 10 秒（Web 端 /ctrl 使用）
+                    player.seekTo(player.getCurrentPosition() + 10000);
+                    break;
+                case "rew":
+                    // 相对快退 10 秒（Web 端 /ctrl 使用）
+                    player.seekTo(Math.max(0, player.getCurrentPosition() - 10000));
+                    break;
+                case "toggle":
+                    // 播放/暂停切换（状态由播放器自身判定）
+                    if (player.isPlaying()) player.pause(); else player.play();
                     break;
             }
         }
@@ -138,6 +154,13 @@ public class ExoPlayerActivity extends Activity {
         btnFF = findViewById(R.id.btn_ff);
         btnRew = findViewById(R.id.btn_rew);
         controls = findViewById(R.id.controls);
+        topBar = findViewById(R.id.top_bar);
+        // 控件不持有焦点：实体遥控器的方向键是播放快进/快退，不做焦点导航，
+        // 防止按键被按钮/进度条抢占消费
+        btnPlayPause.setFocusable(false);
+        btnFF.setFocusable(false);
+        btnRew.setFocusable(false);
+        seekBar.setFocusable(false);
 
         videoUrl = getIntent().getStringExtra("videoUrl");
         videoTitle = getIntent().getStringExtra("videoTitle");
@@ -184,6 +207,8 @@ public class ExoPlayerActivity extends Activity {
                 }
             }
         });
+
+        hideControlsTask = () -> showControls(false);
 
         // 两个 Receiver 分别 try-catch + 各自加 flag：targetSdk 33 下 registerReceiver 不带
         // RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED 会抛 SecurityException；若共用一个 try，
@@ -369,37 +394,67 @@ public class ExoPlayerActivity extends Activity {
 
     private void showControls(boolean show) {
         if (mDestroyed) return;
+        handler.removeCallbacks(hideControlsTask);
+        if (topBar != null) topBar.setVisibility(show ? View.VISIBLE : View.GONE);
         controls.setVisibility(show ? View.VISIBLE : View.GONE);
         mControlsShowing = show;
-        // 不再自动隐藏：电视遥控器不易唤回自动隐藏的浮层；
-        // 需要"全屏观感"时按 MENU 键可手动隐藏/显示
+        // 顶部栏与控件区 X 秒无操作后自动隐藏；任意遥控键/触摸即唤回
+        if (show) {
+            handler.postDelayed(hideControlsTask, HIDE_DELAY_MS);
+        }
     }
 
     private void toggleControls() { showControls(!mControlsShowing); }
 
+    /**
+     * 实体遥控器按键拦截。
+     * 必须在 dispatchKeyEvent 层处理而不是 onKeyDown：按键先经视图树派发，
+     * 控制条上的按钮/进度条一旦持有焦点就会把左右键消费成焦点移动/拖动，
+     * 永远到不了 onKeyDown——这正是"实体遥控器左右键无法快进后退"的根因。
+     * 在 Activity 入口直接拦截后，焦点状态不再影响任何遥控操作。
+     */
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
         switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (down) seekBack();      // 长按连发：每次 ACTION_DOWN 重复都快退 10s
+                showControls(true);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (down) seekForward();
+                showControls(true);
+                return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                // OK 键直接控制播放/暂停（控制条常显，无需再"先唤出再操作"）
-                togglePlay(); return true;
-            case KeyEvent.KEYCODE_MENU:
-                toggleControls(); return true;
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-                seekBack(); return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                seekForward(); return true;
+                if (down) togglePlay();
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                togglePlay(); return true;
+                if (down) togglePlay();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                if (down) seekForward();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
+                if (down) seekBack();
+                return true;
+            case KeyEvent.KEYCODE_MENU:
+                if (down) toggleControls();
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                // 上下键仅唤回/保持控制条
+                if (down) showControls(true);
+                return true;
             case KeyEvent.KEYCODE_BACK:
                 // 返回键 = 退出播放器（关闭按钮已移除，统一走这里）
-                finish();
+                if (down) finish();
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return super.dispatchKeyEvent(event);
     }
 
     @Override

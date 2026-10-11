@@ -197,17 +197,18 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 					final int kc = KeyEvent.keyCodeFromString(keyCode);
 					if(kc == KeyEvent.KEYCODE_UNKNOWN) return;
 
-					// ===== 全局注入（原项目方案）：ADB 已连接时优先走 shell input keyevent =====
-					// shell 注入进入系统输入管线，任何前台 App 都能收到；而本地
-					// dispatchKeyToCurrentFocus 只能触达本进程/顶层 Activity 的焦点 View，
-					// 实测在其它 App 内全部无效。
+					// ===== ADB 已连接时的增强通道：shell input keyevent 全局生效 =====
 					// 只在 DOWN / PRESSED 时发完整按键：轻点=keydown 一次；长按连发=PRESSED 重复。
 					if (keyAction == KEY_ACTION_DOWN || keyAction == KEY_ACTION_PRESSED) {
 						if (AdbHelper.sendKeyCode(kc)) return;
 					}
 
-					// ===== ADB 未连接：退回本地派发（仅在自家窗口内有效） =====
-					final boolean isNavKey = KeyEventUtils.isNavigationKey(kc);
+					// ===== 原项目核心方案（移植自 kingthy/TVRemoteIME）：经 InputConnection 派发 =====
+					// 本输入法被设为默认后，其它 App 聚焦可交互视图时系统即建立输入会话
+					// （TYPE_NULL），ic.sendKeyEvent 把按键直接送达该 App——这是原项目
+					// 遥控能跨 App 生效的真正原因，无需 ADB、无需反射注入。
+					// fork 版曾改为 dispatchKeyToCurrentFocus（反射找焦点 View），反射在多数
+					// 系统上失败，导致"仅本 App 内有效"。现已完全回归原项目实现。
 					handler.post(new Runnable() {
 						@Override
 						public void run() {
@@ -215,15 +216,34 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 								// 软键盘自身的方向导航（按钮焦点切换）
 								if (keyAction == KEY_ACTION_PRESSED || keyAction == KEY_ACTION_DOWN) {
 									if (!handleKeyboardFocusEvent(kc)) {
-										dispatchKeyToCurrentFocus(kc, keyAction);
+										sendKeyCode(kc);
 									}
 								}
-							} else if (isNavKey) {
-								// 导航键（上下左右/确认/返回/主页）：全局派发，弹框/菜单/Dialog 都能响应
-								dispatchKeyToCurrentFocus(kc, keyAction);
 							} else {
-								// 普通字符/文本键
-								dispatchViaInputConnection(kc, keyAction);
+								long eventTime = SystemClock.uptimeMillis();
+								InputConnection ic = getCurrentInputConnection();
+								switch (keyAction) {
+									case KEY_ACTION_PRESSED:
+										sendKeyCode(kc);
+										break;
+									case KEY_ACTION_DOWN:
+										if (ic != null) {
+											ic.sendKeyEvent(new KeyEvent(eventTime, eventTime,
+													KeyEvent.ACTION_DOWN, kc, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+													KeyEvent.FLAG_SOFT_KEYBOARD | KeyEvent.FLAG_KEEP_TOUCH_MODE));
+										} else {
+											// 无输入会话时最后尝试反射注入（多数系统无权限，等效原项目的静默失败）
+											injectGlobalKey(kc, KEY_ACTION_DOWN);
+										}
+										break;
+									case KEY_ACTION_UP:
+										if (ic != null) {
+											ic.sendKeyEvent(new KeyEvent(eventTime, eventTime,
+													KeyEvent.ACTION_UP, kc, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+													KeyEvent.FLAG_SOFT_KEYBOARD | KeyEvent.FLAG_KEEP_TOUCH_MODE));
+										}
+										break;
+								}
 							}
 						}
 					});

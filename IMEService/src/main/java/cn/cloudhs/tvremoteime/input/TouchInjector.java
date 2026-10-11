@@ -55,7 +55,8 @@ public class TouchInjector {
 
     private void init(Context context) {
         try {
-            mCursor = new CursorOverlay(context);
+            // 全局唯一光标浮层（各 TouchInjector 实例共享，避免重连后屏幕遗留多个圆点）
+            mCursor = CursorOverlay.get(context);
         } catch (Throwable ignore) {
         }
         try {
@@ -215,7 +216,9 @@ public class TouchInjector {
         }
         down.recycle();
         up.recycle();
-        return ok || AdbHelper.sendShellCommand("input tap " + (int) x + " " + (int) y);
+        // 三级退化：反射注入 → 无障碍 dispatchGesture → ADB input tap
+        return ok || TouchAccessibilityService.tap(x, y)
+                || AdbHelper.sendShellCommand("input tap " + (int) x + " " + (int) y);
     }
 
     /** 长按：反射注入失败时走 ADB 同点 swipe 800ms 兜底 */
@@ -233,7 +236,9 @@ public class TouchInjector {
             up.recycle();
         }
         down.recycle();
-        return ok || AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
+        // 三级退化：反射注入 → 无障碍同点长按 → ADB swipe 800ms
+        return ok || TouchAccessibilityService.longPress(x, y)
+                || AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
                 + " " + (int) x + " " + (int) y + " 800");
     }
 
@@ -258,9 +263,11 @@ public class TouchInjector {
         if (injected) return true;
         // vScroll > 0 表示向上滚动，对应 DPAD_UP；反之对应 DPAD_DOWN
         if (injectKey(vScroll > 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN)) return true;
-        // ADB 兜底：vScroll<0（向下翻）= 手指上滑，滑动距离由滚动量放大
+        // 无障碍 swipe：vScroll<0（向下翻）= 手指上滑
         int dist = Math.max(40, (int) Math.abs(vScroll) * 60);
         int toY = (int) Math.max(0, vScroll < 0 ? y + dist : y - dist);
+        if (TouchAccessibilityService.swipe(x, y, x, toY, 300)) return true;
+        // ADB 兜底
         return AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
                 + " " + (int) x + " " + toY + " 300");
     }

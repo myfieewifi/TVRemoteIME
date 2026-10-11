@@ -26,6 +26,25 @@ import android.view.WindowManager;
 public class CursorOverlay {
     private static final String TAG = "CursorOverlay";
 
+    // 全局唯一实例：TouchInjector 在 HTTP 处理器与每个 WebSocket 里各有一份，
+    // 若各自 new 一个浮层，多次连接/重连会在屏幕上遗留多个光标圆点。
+    private static volatile CursorOverlay sShared;
+
+    public static CursorOverlay get(Context context) {
+        if (sShared == null) {
+            synchronized (CursorOverlay.class) {
+                if (sShared == null) {
+                    sShared = new CursorOverlay(context.getApplicationContext());
+                }
+            }
+        }
+        return sShared;
+    }
+
+    private CursorOverlay(Context context) {
+        this.mCtx = context;
+    }
+
     private final Context mCtx;
     // move/show/hide 由 NanoHTTPD 工作线程调用，但 WindowManager.addView 绑定调用线程的 Looper，
     // 后续从其它线程 updateViewLayout 会抛 CalledFromWrongThreadException。统一切到主线程执行。

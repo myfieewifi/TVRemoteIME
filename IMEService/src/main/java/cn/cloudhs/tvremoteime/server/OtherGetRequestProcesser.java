@@ -94,6 +94,8 @@ public class OtherGetRequestProcesser implements RequestProcesser {
             st.put("overlayGranted", overlay);
             st.put("rootAvailable", RootUtil.isRootAvailableCached());
             st.put("ijkAvailable", AppConfig.isIjkAvailable());
+            st.put("touchInjectOn",
+                    cn.cloudhs.tvremoteime.input.TouchAccessibilityService.isReady());
             st.put("adbConnected",
                     cn.cloudhs.tvremoteime.adb.AdbHelper.getInstance() != null
                             && cn.cloudhs.tvremoteime.adb.AdbHelper.getInstance().isRunning());

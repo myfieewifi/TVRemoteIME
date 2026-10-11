@@ -34,6 +34,7 @@ public class PlayRequestProcesser implements RequestProcesser {
                 case "/play":
                 case "/playStop":
                 case "/changePlayFFI":
+                case "/ctrl":
                     return true;
             }
         }
@@ -84,6 +85,20 @@ public class PlayRequestProcesser implements RequestProcesser {
                 boolean useIJK    = "true".equalsIgnoreCase(params.get("useIJK")) || "true".equalsIgnoreCase(params.get("useXl"));
                 boolean useExo    = "true".equalsIgnoreCase(params.get("useExo"));
 
+                // 磁力/ED2K/种子链接：只有迅雷内核能边下边播，强制走 IJK/XL 路径
+                String lowUrl = url.toLowerCase();
+                boolean isP2p = lowUrl.startsWith("magnet:") || lowUrl.startsWith("ed2k:")
+                        || lowUrl.endsWith(".torrent");
+                if (isP2p) {
+                    if (!AppConfig.isIjkAvailable()) {
+                        return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                                "{\"ok\":false,\"msg\":\"磁力/种子链接需迅雷内核，请安装 armeabi-v7a 或 universal 包\"}");
+                    }
+                    useIJK = true;
+                    useSystem = false;
+                    useExo = false;
+                }
+
                 AppConfig config = AppConfig.getInstance(context);
                 // 请求未显式指定内核时，使用持久化的默认内核（Web 端「投屏」页可切换）
                 if (!useSystem && !useIJK && !useExo) {
@@ -120,6 +135,32 @@ public class PlayRequestProcesser implements RequestProcesser {
                 }
                 return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
                         "{\"ok\":true,\"engine\":\"" + engineUsed + "\"}");
+            }
+            case "/ctrl": {
+                // Web 端播放控制：ff(快进10s) / rew(快退10s) / pause(暂停) / play(继续) / stop(停止)
+                String cmd = params.get("cmd");
+                if (TextUtils.isEmpty(cmd)) {
+                    return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.BAD_REQUEST,
+                            "{\"ok\":false,\"msg\":\"missing cmd\"}");
+                }
+                boolean valid = "ff".equals(cmd) || "rew".equals(cmd) || "toggle".equals(cmd)
+                        || "pause".equals(cmd) || "play".equals(cmd) || "stop".equals(cmd);
+                if (!valid) {
+                    return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.BAD_REQUEST,
+                            "{\"ok\":false,\"msg\":\"unknown cmd\"}");
+                }
+                try {
+                    Intent ctrl = new Intent(DlnaPlayBridgeService.ACTION_DLNA_CTRL);
+                    ctrl.setPackage(context.getPackageName());
+                    ctrl.putExtra(DlnaPlayBridgeService.EXTRA_CTRL_CMD, cmd);
+                    context.sendBroadcast(ctrl);
+                } catch (Exception e) {
+                    Log.e(TAG, "发送播放控制指令失败", e);
+                    return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                            "{\"ok\":false,\"msg\":\"发送失败\"}");
+                }
+                return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,
+                        "{\"ok\":true}");
             }
             case "/playStop":
                 // 停止新播放器（通过广播）

@@ -119,6 +119,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- 无障碍触摸注入服务：dispatchGesture 是 Android 7+ 的标准全局手势通道，
+             免 ROOT 免 ADB；用户在系统「无障碍」设置中启用后，触摸板点击才能跨 App 生效 -->
+        <service
+            android:name=".input.TouchAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/touch_accessibility" />
+        </service>
+
         <!-- 前台守护服务：常驻通知，降低被系统杀后台概率，定期巡检拉起输入法服务 -->
         <service
             android:name=".service.ForegroundGuardService"

@@ -190,6 +190,14 @@ public class FileRequestProcesser  implements RequestProcesser {
                             if (!rel.startsWith("/")) rel = "/" + rel;
                             downloadUrl = "/file/download" + rel;
                         }
+                        // 移植原项目 UploadRequestProcesser 逻辑：检测到上传的是 APK
+                        // 则自动拉起安装程序（电视端显示安装界面）
+                        if (safeName.toLowerCase().endsWith(".apk")) {
+                            try {
+                                cn.cloudhs.tvremoteime.AppPackagesHelper
+                                        .installPackage(saveFilename, context);
+                            } catch (Throwable ignored) {}
+                        }
                     }
                 }
             }
