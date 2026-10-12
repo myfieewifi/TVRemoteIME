@@ -18,11 +18,14 @@ android {
 }
 
 dependencies {
-    // ijkplayer 播放内核的 Java 层以本地 jar 内置（libs/ijkplayer-java-0.8.8.jar）。
-    // 原始坐标 tv.danmaku.ijk.media:ijkplayer-java 托管于 JCenter，而该仓库已于 2021 年关停，
-    // 改为本地内置可避免构建时依赖解析失败，离线与 CI 环境均可正常编译。
+    // ijkplayer 播放内核的 Java 层（原生 so 为 0.8.4，Java 层必须同版本，
+    // 否则 JNI 接口错配、IjkMediaPlayer 创建即崩——此前错误内置 0.8.8 jar 导致
+    // IJK 内核一播就闪退）。JCenter 已关停，改由根 build.gradle 的阿里云 JCenter
+    // 镜像仓库解析。
     // 此处使用 api 而非 implementation：DroidDLNA / IMEService 等下游模块需要在编译期访问该 Java 层。
-    api fileTree(dir: 'libs', include: ['*.jar'])
+    api 'tv.danmaku.ijk.media:ijkplayer-java:0.8.4'
+    // 排除历史遗留的 0.8.8 本地 jar（与 so 不配对）
+    api fileTree(dir: 'libs', include: ['*.jar'], exclude: ['ijkplayer-java-0.8.8.jar'])
     implementation 'androidx.annotation:annotation:1.6.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.0'
     implementation project(':thunder')

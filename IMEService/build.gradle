@@ -8,9 +8,15 @@ android {
     defaultConfig {
         applicationId 'cn.cloudhs.tvremoteime'
         minSdkVersion 21
-        targetSdkVersion 33
-        versionCode 3
-        versionName "1.0.2"
+        // targetSdk 22 对齐原项目(com.android.tvremoteime targetSdk 15)的运行时行为类：
+        // - targetSdk<23：存储等危险权限装机即授，无需运行时申请（原项目文件管理因此直接可用；
+        //   fork 用 33 时从未申请过运行时权限，存储相关全部受限）
+        // - targetSdk<23：Android 6+ 自动授予悬浮窗权限，触摸光标浮层开箱可用
+        // - targetSdk<30：全版本走 legacy 外部存储，与原项目文件管理模型一致
+        // compileSdk 33 保持不变：RECEIVER_EXPORTED 等 API 编译期可见，运行时已按 SDK_INT 门控
+        targetSdkVersion 22
+        versionCode 4
+        versionName "1.0.3"
         vectorDrawables.useSupportLibrary = true
         // 只保留中文与英文字符资源，剔除其它语言，减小体积（核心文案为中文，其余回退默认）
         resConfigs 'zh', 'en'

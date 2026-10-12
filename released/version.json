@@ -1,7 +1,7 @@
 {
-  "versionCode": 3,
-  "versionName": "1.0.2",
-  "message": "云视远程输入法 v1.0.2 更新\n\n· 【移植原项目方案】修复遥控按键在其它 App 内无效：经 InputConnection 派发按键，输入法设为默认后任意 App 均可遥控；ADB 已连接时自动升级为全局注入\n· 修复触摸板点击无效：新增无障碍手势注入（免 ROOT 免 ADB，触摸页一键引导开启），点击/长按/滚动三级自动降级\n· 修复触摸板光标残留（满屏圆点）：光标浮层改全局单例\n· 修复远程文字输入无效果，失败时电视端与网页端均有明确提示\n· Exo 播放器：顶栏与控制条 5 秒无操作自动隐藏、任意键唤回；实体遥控器左右键快进/快退（按键层拦截，不再被按钮/进度条抢占）；遥控器 OK=暂停/继续、返回=退出；网页投屏页新增快退10s/暂停继续/快进10s按钮\n· 修复 IJK 内核切换后播放即闪退（系统服务声明缺失）；磁力/ED2K/种子链接自动走迅雷内核边下边播\n· 连推两个视频自动切换，不再同时播放\n· 文件上传检测到 APK 自动拉起电视端安装程序\n· 连接状态反复横跳修复（WebSocket 心跳保活）、默认端口改 9976（避免与影视仓冲突）、应用页点击启动与长按卸载（ROOT 可静默卸载系统应用）、文件夹删除、上传移入文件页等 30+ 项修复",
-  "installAPK": "https://github.com/myfieewifi/TVRemoteIME/releases/download/v1.0.2/TVRemoteIME-v1.0.2-universal.apk",
+  "versionCode": 4,
+  "versionName": "1.0.3",
+  "message": "云视远程输入法 v1.0.3 更新（对齐原项目运行时行为）\n\n· 【关键】targetSdk 33→22，回归原项目(com.android.tvremoteime)的运行时行为类：存储权限装机即授（文件管理/上传直接可用）、悬浮窗权限自动授予（触摸光标开箱可见）、全版本 legacy 存储；IME 默认主题也回归原项目极简样式，修复点击输入框不弹出键盘的问题\n· 【关键】修复 IJK 内核一播就闪退：Java 层与原生 so 版本错配（0.8.8 jar 配 0.8.4 so），现统一为 0.8.4（经阿里云 JCenter 镜像解析）；磁力/ED2K/种子链接自动走迅雷内核\n· 修复触摸板点击无效：改为标准鼠标语义注入（与光标同一 SOURCE_MOUSE 流 + 正常按压时序），并新增 无障碍手势 → ROOT input tap → ADB 四级自动降级；使用触摸后桌面焦点丢失的问题一并改善\n· 遥控按键跨 App 生效（原项目 InputConnection 方案）已随 v1.0.2 发布",
+  "installAPK": "https://github.com/myfieewifi/TVRemoteIME/releases/download/v1.0.3/TVRemoteIME-v1.0.3-universal.apk",
   "forced": false
 }

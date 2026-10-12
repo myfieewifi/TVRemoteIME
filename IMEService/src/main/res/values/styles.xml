@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 主界面主题：蓝紫渐变 ActionBar 风格 -->
-    <style name="AppTheme" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+    <!-- 应用默认主题（IME 窗口使用）：保持与原项目完全一致的极简主题。
+         原项目 IME 在 android:Theme 下正常弹出；fork 曾改成 DeviceDefault.Light
+         的 Material 主题（windowBackground/状态栏着色等），IME 窗口行为随之改变。
+         排查"键盘不弹出"时先回归原样，新样式仅给 MainActivity 单独使用。 -->
+    <style name="AppTheme" parent="android:Theme">
+    </style>
+
+    <!-- 主界面主题：蓝紫渐变风格（仅 MainActivity，不影响 IME 窗口） -->
+    <style name="MainTheme" parent="android:Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:colorPrimary">@color/primary</item>
         <item name="android:colorPrimaryDark">@color/primary_dark</item>
         <item name="android:colorAccent">@color/accent</item>

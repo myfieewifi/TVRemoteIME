@@ -202,44 +202,61 @@ public class TouchInjector {
         }
     }
 
-    /** 点击：优先反射注入；被系统拒绝（无 INJECT_EVENTS 权限）时走 ADB input tap 兜底 */
+    /** 点击：鼠标语义注入（与 hover 移动同一 SOURCE_MOUSE 流，TOOL_TYPE_MOUSE +
+     *  BUTTON_PRIMARY，标准按下-抬起时序）。实测电视上 hover 能送达（光标会动、
+     *  桌面会失焦），此前点击失败是语义错误：SOURCE_TOUCHSCREEN 混流 + 0ms 按压时长
+     *  被目标 App 丢弃。注入失败依次退化为 无障碍手势 → ROOT input tap → ADB。 */
     private boolean injectClick(float x, float y) {
-        long now = SystemClock.uptimeMillis();
-        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
-        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        MotionEvent up = MotionEvent.obtain(now, now, MotionEvent.ACTION_UP, x, y, 0);
-        up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        boolean ok = inject(down);
-        if (ok) {
-            try { Thread.sleep(16); } catch (InterruptedException ignored) {}
-            inject(up);
+        long downTime = SystemClock.uptimeMillis();
+        if (inject(buildMouseEvent(downTime, downTime, MotionEvent.ACTION_DOWN, x, y))) {
+            try { Thread.sleep(60); } catch (InterruptedException ignored) {}
+            inject(buildMouseEvent(downTime, downTime + 60, MotionEvent.ACTION_UP, x, y));
+            return true;
         }
-        down.recycle();
-        up.recycle();
-        // 三级退化：反射注入 → 无障碍 dispatchGesture → ADB input tap
-        return ok || TouchAccessibilityService.tap(x, y)
+        return TouchAccessibilityService.tap(x, y)
+                || rootShell("input tap " + (int) x + " " + (int) y)
                 || AdbHelper.sendShellCommand("input tap " + (int) x + " " + (int) y);
     }
 
-    /** 长按：反射注入失败时走 ADB 同点 swipe 800ms 兜底 */
+    /** 长按：鼠标按住 800ms；退化链同点击 */
     private boolean injectLongClick(float x, float y) {
-        long now = SystemClock.uptimeMillis();
-        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
-        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        boolean ok = inject(down);
-        if (ok) {
-            // 先 move 一下再等 500ms
-            try { Thread.sleep(520); } catch (InterruptedException ignored) {}
-            MotionEvent up = MotionEvent.obtain(now, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0);
-            up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-            inject(up);
-            up.recycle();
+        long downTime = SystemClock.uptimeMillis();
+        if (inject(buildMouseEvent(downTime, downTime, MotionEvent.ACTION_DOWN, x, y))) {
+            try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+            inject(buildMouseEvent(downTime, downTime + 800, MotionEvent.ACTION_UP, x, y));
+            return true;
         }
-        down.recycle();
-        // 三级退化：反射注入 → 无障碍同点长按 → ADB swipe 800ms
-        return ok || TouchAccessibilityService.longPress(x, y)
+        return TouchAccessibilityService.longPress(x, y)
+                || rootShell("input swipe " + (int) x + " " + (int) y
+                        + " " + (int) x + " " + (int) y + " 800")
                 || AdbHelper.sendShellCommand("input swipe " + (int) x + " " + (int) y
-                + " " + (int) x + " " + (int) y + " 800");
+                        + " " + (int) x + " " + (int) y + " 800");
+    }
+
+    /** 构造一次标准鼠标事件（TOOL_TYPE_MOUSE、BUTTON_PRIMARY） */
+    private MotionEvent buildMouseEvent(long downTime, long eventTime, int action, float x, float y) {
+        MotionEvent.PointerProperties[] props = new MotionEvent.PointerProperties[1];
+        props[0] = new MotionEvent.PointerProperties();
+        props[0].id = 0;
+        props[0].toolType = MotionEvent.TOOL_TYPE_MOUSE;
+        MotionEvent.PointerCoords[] coords = new MotionEvent.PointerCoords[1];
+        coords[0] = new MotionEvent.PointerCoords();
+        coords[0].x = x;
+        coords[0].y = y;
+        coords[0].pressure = 1f;
+        coords[0].size = 1f;
+        return MotionEvent.obtain(downTime, eventTime, action, 1,
+                props, coords, 0, MotionEvent.BUTTON_PRIMARY, 1f, 1f,
+                0, 0, InputDevice.SOURCE_MOUSE, 0);
+    }
+
+    /** ROOT 设备直接 su 执行 input 命令（同步等待完成，比网络 ADB 更普适） */
+    private boolean rootShell(String cmd) {
+        try {
+            return cn.cloudhs.tvremoteime.RootUtil.execAsRoot(cmd);
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** 滚动：滚轮轴 → DPAD 键 → ADB swipe 三级退化 */
